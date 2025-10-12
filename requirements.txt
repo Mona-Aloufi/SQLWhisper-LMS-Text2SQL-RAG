@@ -1,0 +1,22 @@
+# requirements.txt
+# Core Libraries
+torch
+transformers
+datasets
+sentence-transformers
+
+# RAG Framework (Choose one, typically LangChain is simpler to start)
+langchain
+llama-index
+
+# Vector Store (FAISS for local/in-memory experiments)
+faiss-cpu
+
+# Utility Libraries
+pandas
+numpy
+tqdm
+scikit-learn
+
+# Arabic-specific libraries (Recommended)
+camel-tools
