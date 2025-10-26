@@ -14,7 +14,7 @@
 
 ### The Problem
 
-**School administrators** and **instructors** frequently need quick, complex data insights—like "Which students in the Algebra class have submitted fewer than two assignments in the last week?"—but they often lack the technical **SQL skills** to query the Learning Management System (LMS) database directly. This bottleneck slows down decision-making and immediate intervention.
+**School administrators** and **instructors** frequently need quick, complex data insights like "Which students in the Algebra class have submitted fewer than two assignments in the last week?" but they often lack the technical **SQL skills** to query the Learning Management System (LMS) database directly. This bottleneck slows down decision-making and immediate intervention.
 
 ### The Solution
 
@@ -76,3 +76,4 @@ cd SQLWhisper
 
 # Install required packages
 pip install -r requirements.txt
+
