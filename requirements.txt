@@ -1,22 +1,28 @@
 # requirements.txt
-# Core Libraries
+
+# --- 1. CORE LLM & FINETUNING (Text2SQL Model) ---
 torch
 transformers
 datasets
-sentence-transformers
+accelerate             # Essential for fast/efficient finetuning (e.g., DeepSpeed/QLoRA)
+peft                   # Parameter-Efficient Finetuning (QLoRA/LoRA)
+trl                    # Transformer Reinforcement Learning (for SFTTrainer)
+bitsandbytes           # For 4-bit quantization (running large models on limited VRAM)
 
-# RAG Framework (Choose one, typically LangChain is simpler to start)
-langchain
-llama-index
+# --- 2. RAG & EMBEDDINGS (Schema Retrieval) ---
+sentence-transformers  # For the embedding model (e.g., MiniLM, BGE)
+langchain              # For RAG orchestration and prompt building
+chromadb               # A lightweight, open-source vector store (great for local dev/testing)
+faiss-cpu              # Keep this for fast similarity search backbone
 
-# Vector Store (FAISS for local/in-memory experiments)
-faiss-cpu
+# --- 3. DATABASE & GOVERNANCE (Execution & PII) ---
+sqlalchemy             # Python SQL toolkit/ORM (Used for connecting to and querying the LMS DB)
+psycopg2-binary        # PostgreSQL adapter (Use this if your LMS is on Postgres)
+# OR pymysql           # Use this if your LMS is on MySQL/MariaDB
+# OR sqlite3           # (Usually built-in, but good to note if using SQLite for sandbox)
 
-# Utility Libraries
+# --- 4. DEPLOYMENT & UTILITIES (Hugging Face) ---
+huggingface_hub        # For deploying the finetuned model to the Hugging Face Hub
 pandas
 numpy
 tqdm
-scikit-learn
-
-# Arabic-specific libraries (Recommended)
-camel-tools
