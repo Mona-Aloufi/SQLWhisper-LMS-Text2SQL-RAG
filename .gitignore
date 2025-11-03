@@ -205,3 +205,9 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# Ignore runtime / local data
+query_log.csv
+streamlit_app/history.csv
+streamlit_app/my_database.sqlite

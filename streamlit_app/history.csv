@@ -1,5 +1,0 @@
-Timestamp,Question,SQL
-2025-11-03 01:09:51.044229,Show all students who scored above 90,SELECT * FROM students WHERE name LIKE '%Show all students who scored above 90%';
-2025-11-03 01:10:02.544307,Show me all students,SELECT * FROM students WHERE name LIKE '%Show me all students%';
-2025-11-03 01:12:44.423542,List courses taught by Professor X,SELECT * FROM students WHERE name LIKE '%List courses taught by Professor X%';
-2025-11-03 01:22:03.930195,Get students enrolled in course Y,SELECT * FROM students WHERE name LIKE '%Get students enrolled in course Y%';
