@@ -1,0 +1,23 @@
+question,sql_query,success,error_message
+Get students enrolled in course Y,SELECT * FROM enrollments WHERE course = 'Y';,True,[]
+Show all students who scored above 90,SELECT * FROM students WHERE score > 90;,True,"   id     name  score ::auto_unique_id::
+0   1    Alice     95                  0
+1   3  Charlie     92                  1"
+List courses taught by Professor X,SELECT * FROM courses WHERE professor = 'X';,True,"   id       name professor ::auto_unique_id::
+0   1       Math         X                  0
+1   3  Chemistry         X                  1"
+Show all students who scored above 90,SELECT * FROM students WHERE score > 90;,True,"   id     name  score ::auto_unique_id::
+0   1    Alice     95                  0
+1   3  Charlie     92                  1
+2   6   Fatima     99                  2"
+Show all students ,SELECT * FROM students WHERE name LIKE '%Show all students %',True,[]
+Show all students ,SELECT * FROM students WHERE name LIKE '%Show all students %',True,[]
+List courses taught by Professor X,SELECT * FROM courses WHERE professor = 'X';,False,no such column: professor
+List courses taught by Professors,SELECT * FROM students WHERE name LIKE '%List courses taught by Professors%',True,[]
+Get students enrolled in course Y,SELECT * FROM enrollments WHERE course = 'Y';,False,no such column: course
+List courses taught by Professor X,SELECT * FROM students WHERE name LIKE '%List courses taught by Professor X%',True,[]
+Get students enrolled in course Y,SELECT * FROM enrollments WHERE courses = 'Y';,False,no such column: courses
+Show all students who scored above 90,SELECT * FROM students WHERE score > 90;,True,"   id     name  score ::auto_unique_id::
+0   1    Alice     95                  0
+1   3  Charlie     92                  1
+2   6   Fatima     99                  2"
