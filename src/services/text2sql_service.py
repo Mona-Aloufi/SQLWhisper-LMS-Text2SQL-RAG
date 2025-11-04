@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple, Optional, Any, Union
 
 # Third-party imports
 import torch
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -18,13 +18,11 @@ class EnhancedText2SQLService:
         """
         Enhanced Text2SQL service with Hugging Face token support
         
-        Better model options:
-        - microsoft/rag-token-nsql (Recommended for Text2SQL)
-        - Defog/sqlcoder-7b-2 (Best accuracy, but larger)
-        - google/flan-t5-xxl (Good balance)
+        Using yasserrmd/Text2SQL-1.5B model (Causal LM)
         """
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.model_name = model_name or os.getenv("MODEL_NAME", "google/flan-t5-base")
+        # This will use the model name from your .env file, or default to yasserrmd/Text2SQL-1.5B
+        self.model_name = model_name or os.getenv("MODEL_NAME", "yasserrmd/Text2SQL-1.5B")
         self.hf_token = os.getenv("HF_TOKEN")
         
         self.logger = logging.getLogger(__name__)
@@ -38,11 +36,12 @@ class EnhancedText2SQLService:
                 trust_remote_code=True
             )
             
-            self.model = AutoModelForSeq2SeqLM.from_pretrained(
+            # Use AutoModelForCausalLM for decoder-only models
+            self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 token=self.hf_token,
                 trust_remote_code=True,
-                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+                dtype=torch.float16 if torch.cuda.is_available() else torch.float32
             ).to(self.device)
             
             self.logger.info("✅ Model loaded successfully")
@@ -58,13 +57,15 @@ class EnhancedText2SQLService:
             self.logger.info("Trying fallback model: google/flan-t5-base")
             self.model_name = "google/flan-t5-base"
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            # For fallback, use Seq2Seq model
+            from transformers import AutoModelForSeq2SeqLM
             self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name).to(self.device)
             self.logger.info("Fallback model loaded successfully")
         except Exception as e:
             self.logger.error(f"Fallback model also failed: {e}")
             raise e
         
-    def get_database_schema(self, db_connection) -> Dict:  # Now Dict is defined
+    def get_database_schema(self, db_connection) -> Dict:
         """Extract complete schema information"""
         schema_info = {}
         cursor = db_connection.cursor()
@@ -121,32 +122,40 @@ class EnhancedText2SQLService:
         return schema_context
     
     def create_enhanced_prompt(self, question: str, schema_context: str) -> str:
-        """Create a more structured prompt for better SQL generation"""
-        prompt = f"""You are a SQL expert. Convert the following natural language question into a SQLite SQL query.
-        {schema_context}
-        Instructions:
-        - Use only tables and columns mentioned in the schema
-        - Use proper SQLite syntax
-        - Include only necessary columns in SELECT
-        - Use JOINs when needed
-        - Use WHERE for filtering
-        - Use GROUP BY and aggregates when needed
+        """Create a more structured prompt for causal LM models"""
+        prompt = f"""### Task: Convert the following natural language question into a SQLite SQL query.
 
-        Question: {question}
+### Database Schema:
+{schema_context}
 
-        SQL Query:"""
+### Instructions:
+- Use only tables and columns mentioned in the schema
+- Use proper SQLite syntax
+- Use JOINs when needed
+- Use WHERE for filtering
+- Use GROUP BY and aggregates when needed
+- Return only the SQL query without any explanations
+
+### Question: {question}
+
+### SQL Query:
+```sql
+"""
         return prompt
     
     def clean_sql_output(self, sql: str) -> str:
         """Clean and validate SQL output"""
-        # Remove markdown code blocks if present
+        # Remove any code block markers
         sql = re.sub(r'```sql\s*', '', sql)
         sql = re.sub(r'```\s*', '', sql)
         
-        # Extract only the SQL query (in case model adds explanations)
-        sql_match = re.search(r'(SELECT|INSERT|UPDATE|DELETE|WITH).*', sql, re.IGNORECASE | re.DOTALL)
+        # Extract only the SQL query (stop at the next ``` or end of string)
+        sql_match = re.search(r'(SELECT|INSERT|UPDATE|DELETE|WITH).*?(?=```|$)', sql, re.IGNORECASE | re.DOTALL)
         if sql_match:
             sql = sql_match.group(0).strip()
+        
+        # Remove any trailing incomplete SQL
+        sql = re.sub(r'[\s\n]*$', '', sql)
         
         if not sql.endswith(';'):
             sql += ';'
@@ -181,16 +190,21 @@ class EnhancedText2SQLService:
                 truncation=True
             ).to(self.device)
             
+            # Generate with causal LM
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=256,
                 num_return_sequences=1,
                 temperature=0.1, 
                 do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id
+                pad_token_id=self.tokenizer.eos_token_id,
+                eos_token_id=self.tokenizer.eos_token_id,
+                early_stopping=True
             )
             
             raw_sql = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            # Remove the prompt from the output
+            raw_sql = raw_sql.replace(prompt, "").strip()
             cleaned_sql = self.clean_sql_output(raw_sql)
             
             # Validate SQL
