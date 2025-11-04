@@ -1,0 +1,7 @@
+name: sqlwhisper
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+prefix: /home/mona-aloufi/miniconda3/envs/sqlwhisper

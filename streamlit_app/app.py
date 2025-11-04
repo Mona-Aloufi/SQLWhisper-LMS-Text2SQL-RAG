@@ -7,9 +7,9 @@ import os
 import json
 from st_aggrid import AgGrid, GridOptionsBuilder
 from PIL import Image
-
+logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
 # Page configuration
-st.set_page_config(page_title="SQLWhisper", page_icon="💜", layout="centered")
+st.set_page_config(page_title="SQLWhisper", page_icon=logo_path, layout="centered")
 
 # Custom CSS for enhanced purple theme
 st.markdown("""
@@ -92,16 +92,23 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
 # Title + optional logo
-try:
-    logo = Image.open("streamlit_app/logo.png")
-    st.image(logo, width=100)
-except Exception:
-    pass
+# Dynamically build logo path
+logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
 
-st.markdown('<div class="main-header"><h1>SQLWhisper</h1></div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header"><h4>From Questions To Queries - Instantly</h4></div>', unsafe_allow_html=True)
+# Create empty columns to center content
+col1, col2, col3 = st.columns([1, 2, 1])
 
+with col2:
+    try:
+        logo = Image.open(logo_path)
+        st.image(logo, width=300)
+    except Exception as e:
+        st.error(f"Error loading logo: {e}")
+
+st.markdown("""<div class="main-header">SQLWhisper</div>
+<div class="sub-header">From Questions To Queries – Instantly</div>""", unsafe_allow_html=True)
 # API config
 API_BASE_URL = "http://127.0.0.1:8000"
 
