@@ -116,6 +116,14 @@ API_BASE_URL = "http://127.0.0.1:8000"
 HISTORY_FILE = "streamlit_app/history.csv"
 
 def log_question(question, sql_query, success, valid_sql=False, rows_returned=0, error_message=None):
+    """Safely log each query attempt to CSV history"""
+    # ✅ Define columns BEFORE any condition
+    expected_cols = [
+        "timestamp", "question", "sql_query",
+        "success", "valid_sql", "rows_returned", "error_message"
+    ]
+
+    # ✅ Create a new log entry
     row = {
         "timestamp": pd.Timestamp.now().isoformat(),
         "question": question,
@@ -125,15 +133,21 @@ def log_question(question, sql_query, success, valid_sql=False, rows_returned=0,
         "rows_returned": rows_returned,
         "error_message": error_message or ""
     }
-    
+
+    # ✅ Check if history file exists
     if os.path.exists(HISTORY_FILE):
-        df = pd.read_csv(HISTORY_FILE)
-        expected_cols = ["timestamp", "question", "sql_query", "success", "valid_sql", "rows_returned", "error_message"]
-        if list(df.columns) != expected_cols:
+        try:
+            df = pd.read_csv(HISTORY_FILE)
+            # If file has wrong structure, reset it
+            if list(df.columns) != expected_cols:
+                df = pd.DataFrame(columns=expected_cols)
+        except Exception:
             df = pd.DataFrame(columns=expected_cols)
     else:
+        # Create new dataframe if no file exists
         df = pd.DataFrame(columns=expected_cols)
-    
+
+    # ✅ Append and save safely
     df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
     df.to_csv(HISTORY_FILE, index=False)
 
@@ -187,7 +201,7 @@ with st.sidebar:
                 st.error("Failed to load database info")
 
 # Tabs - Removed Test tab
-tab1, tab2, tab3 = st.tabs(["Query", "History", "About"])
+tab1, tab2, tab3,tab4 = st.tabs(["Query", "History","Feedback Review","About"])
 
 # Tab 1: Query
 with tab1:
@@ -290,7 +304,56 @@ with tab1:
         st.markdown("---")
         st.markdown('<div class="section-header"><h2>Generated SQL</h2></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="sql-box">{result["sql"]}</div>', unsafe_allow_html=True)
-        
+
+        # ✅ ENHANCED FEEDBACK SECTION (👍 / 👎 with correction)
+        st.markdown("### Rate this SQL")
+
+        feedback_col1, feedback_col2 = st.columns([1, 1])
+
+        # 👍 Positive feedback
+        with feedback_col1:
+            if st.button("👍 Looks good", use_container_width=True):
+                payload = {
+                    "question": user_question,
+                    "generated_sql": result["sql"],
+                    "verdict": "up",
+                    "user_correction": None,
+                    "comment": None
+                }
+                try:
+                    res = requests.post(f"{API_BASE_URL}/feedback", json=payload, timeout=5)
+                    if res.ok:
+                        st.success("Thanks for your feedback! 👍")
+                    else:
+                        st.error(f"Failed to save feedback ({res.status_code})")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+        # 👎 Negative feedback with correction
+        with feedback_col2:
+            st.write("If 👎, please explain and suggest a correction (optional):")
+            comment_text = st.text_input("What was wrong?", key="feedback_comment")
+            corrected_sql = st.text_area("Your corrected SQL (optional):", height=100, key="user_correction_box")
+
+            if st.button("👎 Needs improvement", use_container_width=True):
+                payload = {
+                    "question": user_question,
+                    "generated_sql": result["sql"],
+                    "verdict": "down",
+                    "user_correction": corrected_sql or None,
+                    "comment": comment_text or None
+                }
+                try:
+                    res = requests.post(f"{API_BASE_URL}/feedback", json=payload, timeout=5)
+                    if res.ok:
+                        st.success("Feedback with correction saved 👎")
+                    else:
+                        st.error(f"Failed to save feedback ({res.status_code})")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+
+                
         # Status indicators
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -413,8 +476,65 @@ with tab2:
     except Exception as e:
         st.error(f"Error loading history: {e}")
 
-# Tab 3: About
+# ================================================
+# 🟣 TAB 3 — FEEDBACK REVIEW
+# ================================================
 with tab3:
+    st.markdown('<div class="section-header"><h2>User Feedback Review</h2></div>', unsafe_allow_html=True)
+    
+    import sqlite3
+    import pandas as pd
+
+    db_path = "data/my_database.sqlite"
+
+    try:
+        conn = sqlite3.connect(db_path)
+        df_feedback = pd.read_sql_query("SELECT * FROM sql_feedback ORDER BY created_at DESC", conn)
+        conn.close()
+
+        if not df_feedback.empty:
+            st.write(f"📊 Total Feedback Entries: **{len(df_feedback)}**")
+
+            # Metrics
+            up_count = len(df_feedback[df_feedback['verdict'] == 'up'])
+            down_count = len(df_feedback[df_feedback['verdict'] == 'down'])
+            st.markdown(
+                f"""
+                <div style='display:flex; gap:2rem; margin:1rem 0;'>
+                    <div class='metric-box'>👍 Positive<br><strong>{up_count}</strong></div>
+                    <div class='metric-box'>👎 Negative<br><strong>{down_count}</strong></div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+            # Filter options
+            verdict_filter = st.selectbox("Filter by verdict:", ["All", "up", "down"])
+            if verdict_filter != "All":
+                df_feedback = df_feedback[df_feedback["verdict"] == verdict_filter]
+
+            # Display the feedback table
+            st.dataframe(
+                df_feedback[["question", "generated_sql", "verdict", "comment", "user_correction", "created_at"]],
+                use_container_width=True,
+            )
+
+            # Download option
+            csv = df_feedback.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "Download Feedback as CSV",
+                data=csv,
+                file_name="sqlwhisper_feedback.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        else:
+            st.info("No feedback available yet.")
+    except Exception as e:
+        st.error(f"Error loading feedback: {e}")
+
+# Tab 4: About
+with tab4:
     st.markdown('<div class="section-header"><h2>About SQLWhisper</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""

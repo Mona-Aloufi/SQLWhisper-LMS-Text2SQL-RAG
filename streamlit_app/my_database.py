@@ -133,7 +133,19 @@ def main():
     ]
     grades_insert = "INSERT INTO grades (student_id, course_id, grade) VALUES (?, ?, ?)"
     ensure_table_and_seed(cur, "grades", grades_create, grades_rows, grades_insert)
-
+    
+    sql_feedback_create = """
+    CREATE TABLE IF NOT EXISTS sql_feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        question TEXT NOT NULL,              -- User's natural-language question
+        generated_sql TEXT NOT NULL,         -- Model-generated SQL
+        user_correction TEXT,                -- User's corrected SQL (if any)
+        verdict TEXT CHECK(verdict IN ('up', 'down')) NOT NULL,  -- 👍 or 👎
+        comment TEXT,                        -- Optional explanation or note
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """
+    cur.execute(sql_feedback_create)
     conn.commit()
     conn.close()
     print("✅ Demo database created/updated successfully at:", DB_PATH)
