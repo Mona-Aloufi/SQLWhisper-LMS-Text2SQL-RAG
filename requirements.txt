@@ -1,21 +1,36 @@
-# requirements.txt
+# Core ML & NLP
+transformers>=4.35.0
+torch>=2.0.0
+sentencepiece>=0.1.99
+protobuf>=3.20.0
 datasets
-accelerate             # Essential for fast/efficient finetuning (e.g., DeepSpeed/QLoRA)
-peft                   # Parameter-Efficient Finetuning (QLoRA/LoRA)
-trl                    # Transformer Reinforcement Learning (for SFTTrainer)
-bitsandbytes           # For 4-bit quantization (running large models on limited VRAM)
+accelerate>=0.24.0
+peft
+trl
+bitsandbytes
 
-sqlalchemy             # Python SQL toolkit/ORM (Used for connecting to and querying the LMS DB)
-psycopg2-binary        # PostgreSQL adapter (Use this if your LMS is on Postgres)
+# FastAPI backend
+fastapi
+uvicorn
 
-huggingface_hub        # For deploying the finetuned model to the Hugging Face Hub
+# Streamlit frontend
+streamlit
+streamlit-aggrid
+
+# RAG / LangChain components
+langchain
+faiss-cpu
+huggingface_hub
+python-dotenv>=1.0.0
+
+# Database connectivity (for LMS schema or logging)
+sqlalchemy
+psycopg2-binary
+
+# Data processing
 pandas
 numpy
 tqdm
-transformers>=4.35.0
-torch>=2.0.0
-python-dotenv>=1.0.0
-accelerate>=0.24.0
-sentencepiece>=0.1.99
-protobuf>=3.20.0
 
+# Utility & I/O
+requests
