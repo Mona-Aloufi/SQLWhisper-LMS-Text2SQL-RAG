@@ -1,7 +1,8 @@
 import sqlite3
 from pathlib import Path
+import pandas as pd
 
-DB_PATH = Path("streamlit_app/my_database.sqlite")
+DB_PATH = Path("data/my_database.sqlite")
 
 def get_connection():
     """Return a SQLite connection."""
