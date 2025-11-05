@@ -95,6 +95,7 @@ st.markdown("""
 
 # Title + optional logo
 # Dynamically build logo path
+# Title + optional logo
 logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
 
 # Create empty columns to center content
@@ -109,21 +110,17 @@ with col2:
 
 st.markdown("""<div class="main-header">SQLWhisper</div>
 <div class="sub-header">From Questions To Queries – Instantly</div>""", unsafe_allow_html=True)
+
 # API config
 API_BASE_URL = "http://127.0.0.1:8000"
-
-# History file
 HISTORY_FILE = "streamlit_app/history.csv"
 
 def log_question(question, sql_query, success, valid_sql=False, rows_returned=0, error_message=None):
     """Safely log each query attempt to CSV history"""
-    # ✅ Define columns BEFORE any condition
     expected_cols = [
         "timestamp", "question", "sql_query",
         "success", "valid_sql", "rows_returned", "error_message"
     ]
-
-    # ✅ Create a new log entry
     row = {
         "timestamp": pd.Timestamp.now().isoformat(),
         "question": question,
@@ -134,20 +131,16 @@ def log_question(question, sql_query, success, valid_sql=False, rows_returned=0,
         "error_message": error_message or ""
     }
 
-    # ✅ Check if history file exists
     if os.path.exists(HISTORY_FILE):
         try:
             df = pd.read_csv(HISTORY_FILE)
-            # If file has wrong structure, reset it
             if list(df.columns) != expected_cols:
                 df = pd.DataFrame(columns=expected_cols)
         except Exception:
             df = pd.DataFrame(columns=expected_cols)
     else:
-        # Create new dataframe if no file exists
         df = pd.DataFrame(columns=expected_cols)
 
-    # ✅ Append and save safely
     df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
     df.to_csv(HISTORY_FILE, index=False)
 
@@ -182,15 +175,14 @@ def get_database_info():
         else:
             st.session_state.database_info = None
             return None
-    except Exception as e:
+    except Exception:
         st.session_state.database_info = None
         return None
 
-# Sidebar - Simplified
+# Sidebar
 with st.sidebar:
     st.markdown('<div class="sidebar-header">Database Information</div>', unsafe_allow_html=True)
-    
-    if st.button("Load Database Schema", use_container_width=True):
+    if st.button("Load Database Schema", width="stretch"):
         with st.spinner("Loading database schema..."):
             db_info = get_database_info()
             if db_info:
@@ -200,8 +192,8 @@ with st.sidebar:
             else:
                 st.error("Failed to load database info")
 
-# Tabs - Removed Test tab
-tab1, tab2, tab3,tab4 = st.tabs(["Query", "History","Feedback Review","About"])
+# Tabs
+tab1, tab2, tab3, tab4 = st.tabs(["Query", "History", "Feedback Review", "About"])
 
 # Tab 1: Query
 with tab1:
@@ -212,87 +204,59 @@ with tab1:
         st.code("python app.py")
         st.stop()
 
-    # Get sample queries
     try:
         response = requests.get(f"{API_BASE_URL}/sample-queries")
         if response.status_code == 200:
             sample_queries = response.json()["sample_queries"]
         else:
-            sample_queries = [
-                "Show all tables in the database",
-                "Count the total number of records",
-                "List the first 5 rows from all tables",
-                "What is the database schema?",
-            ]
+            sample_queries = ["Show all tables", "Count records", "List first 5 rows", "Show schema"]
     except:
-        sample_queries = [
-            "Show all tables in the database",
-            "Count the total number of records", 
-            "List the first 5 rows",
-            "What is the database structure?",
-        ]
+        sample_queries = ["Show all tables", "Count records", "List first 5 rows", "Show schema"]
 
-    # Suggested queries in a more elegant layout
     st.write("### Quick Start Queries")
     cols = st.columns(2)
     for i, q in enumerate(sample_queries[:4]):
         col_idx = i % 2
-        if cols[col_idx].button(q, key=f"suggest_{i}", use_container_width=True):
+        if cols[col_idx].button(q, key=f"suggest_{i}", width="stretch"):
             st.session_state.last_question = q
             st.session_state.generated_sql = ""
             st.session_state.last_result = None
 
     st.markdown("---")
-    
-    # User input section
+
     user_question = st.text_area(
         "### Your Question", 
         value=st.session_state.last_question or "",
         height=120,
-        placeholder="Describe what you want to know about your data...\nExamples:\n- Show all customers from London\n- Count orders by status\n- Find the top 5 products by sales\n- List employees hired in the last month"
+        placeholder="Describe what you want to know about your data..."
     )
 
-    # Action buttons
     col1, col2 = st.columns([1, 1])
-    
+
     with col1:
-        if st.button("Generate SQL Query", type="primary", use_container_width=True):
+        if st.button("Generate SQL Query", type="primary", width="stretch"):
             if not user_question.strip():
                 st.warning("Please enter a question first.")
             else:
                 st.session_state.last_question = user_question
-                with st.spinner("Analyzing your question and generating SQL..."):
+                with st.spinner("Generating SQL..."):
                     try:
                         payload = {"question": user_question}
                         response = requests.post(f"{API_BASE_URL}/test-query", json=payload)
-                        
                         if response.status_code == 200:
                             data = response.json()
                             st.session_state.generated_sql = data["sql"]
                             st.session_state.last_result = data
-                            
-                            log_question(
-                                user_question, 
-                                data["sql"], 
-                                True, 
-                                data["valid"],
-                                len(data["execution_result"]) if data["execution_result"] else 0
-                            )
-                            
+                            log_question(user_question, data["sql"], True, data["valid"], len(data["execution_result"]) if data["execution_result"] else 0)
                             st.success("SQL query generated successfully!")
                         else:
-                            error_msg = f"API Error: {response.text}"
-                            st.error(error_msg)
-                            log_question(user_question, "", False, error_message=error_msg)
-                            
+                            st.error(f"API Error: {response.text}")
                     except Exception as e:
-                        error_msg = f"Request failed: {e}"
-                        st.error(error_msg)
-                        log_question(user_question, "", False, error_message=error_msg)
+                        st.error(f"Request failed: {e}")
 
     with col2:
         if st.session_state.generated_sql:
-            if st.button("Clear Results", use_container_width=True):
+            if st.button("Clear Results", width="stretch"):
                 st.session_state.generated_sql = ""
                 st.session_state.last_result = None
                 st.rerun()
@@ -304,6 +268,27 @@ with tab1:
         st.markdown("---")
         st.markdown('<div class="section-header"><h2>Generated SQL</h2></div>', unsafe_allow_html=True)
         st.markdown(f'<div class="sql-box">{result["sql"]}</div>', unsafe_allow_html=True)
+        # ✅ Display model confidence score if available
+        if result.get("confidence"):
+            confidence = result["confidence"]
+            label = result["confidence_label"]
+
+            color = {
+                "High": "#6a0dad",      # purple
+                "Medium": "#ff9800",    # orange
+                "Low": "#e53935"        # red
+            }.get(label, "#999999")
+
+            st.markdown(
+                f"<div style='padding:0.6rem 1rem; border-radius:0.5rem; display:inline-block; "
+                f"background-color:{color}; color:white; font-weight:bold;'>"
+                f"Confidence: {confidence}% ({label})</div>",
+                unsafe_allow_html=True
+            )
+        else:
+            st.info("⚙️ Confidence score not available from the model.")
+
+
 
         # ✅ ENHANCED FEEDBACK SECTION (👍 / 👎 with correction)
         st.markdown("### Rate this SQL")

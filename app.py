@@ -62,6 +62,8 @@ class Text2SQLResponse(BaseModel):
     execution_result: Optional[List[Dict]] = None
     error: Optional[str] = None
     raw_output: Optional[str] = None
+    confidence: Optional[float] = None         
+    confidence_label: Optional[str] = None 
 
 class TestQuery(BaseModel):
     question: str
@@ -189,7 +191,9 @@ def text2sql(payload: Question):
             question=question,
             sql=result["sql"],
             valid=result["valid"],
-            raw_output=result.get("raw_output", "")
+            raw_output=result.get("raw_output", ""),
+            confidence=result.get("confidence"),
+            confidence_label=result.get("confidence_label")
         )
     except Exception as e:
         logger.error(f"Text2SQL error: {e}")
@@ -222,14 +226,21 @@ def test_query(payload: Question):
                 error = f"Execution failed: {str(e)}"
 
         conn.close()
-        return Text2SQLResponse(
-            question=question,
-            sql=result["sql"],
-            valid=result["valid"],
-            execution_result=execution_result,
-            error=error,
-            raw_output=result.get("raw_output", "")
-        )
+        # ✅ Add confidence fields if they exist in result
+        confidence = result.get("confidence")
+        confidence_label = result.get("confidence_label")
+
+        return {
+            "question": question,
+            "sql": result["sql"],
+            "valid": result["valid"],
+            "execution_result": execution_result,
+            "error": error,
+            "raw_output": result.get("raw_output", ""),
+            "confidence": confidence,
+            "confidence_label": confidence_label,
+        }
+
     except Exception as e:
         logger.error(f"Test query error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
