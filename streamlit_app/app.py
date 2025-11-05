@@ -1,12 +1,17 @@
 # streamlit_app/app.py
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+import sqlite3
+from pathlib import Path
+import numpy as np
 import requests
 import re
 import os
 import json
 from st_aggrid import AgGrid, GridOptionsBuilder
 from PIL import Image
+# from auth import login_page
 logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
 # Page configuration
 st.set_page_config(page_title="SQLWhisper", page_icon=logo_path, layout="centered")
@@ -93,8 +98,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# Title + optional logo
-# Dynamically build logo path
+# # 🟣 AUTHENTICATION GATE (before main app runs)
+# if 'auth_status' not in st.session_state or not st.session_state['auth_status']:
+#     logged_in = login_page()
+#     if not logged_in:
+#         st.stop()  # Prevents the rest of the app from loading
+
 # Title + optional logo
 logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
 
@@ -115,12 +124,29 @@ st.markdown("""<div class="main-header">SQLWhisper</div>
 API_BASE_URL = "http://127.0.0.1:8000"
 HISTORY_FILE = "streamlit_app/history.csv"
 
-def log_question(question, sql_query, success, valid_sql=False, rows_returned=0, error_message=None):
-    """Safely log each query attempt to CSV history"""
+def log_question(
+    question,
+    sql_query,
+    success,
+    valid_sql=False,
+    rows_returned=0,
+    error_message=None,
+    confidence=None,
+    confidence_label=None,
+):
+    """Safely log each query attempt to CSV history, including model confidence."""
     expected_cols = [
-        "timestamp", "question", "sql_query",
-        "success", "valid_sql", "rows_returned", "error_message"
+        "timestamp",
+        "question",
+        "sql_query",
+        "success",
+        "valid_sql",
+        "rows_returned",
+        "error_message",
+        "confidence",
+        "confidence_label",
     ]
+
     row = {
         "timestamp": pd.Timestamp.now().isoformat(),
         "question": question,
@@ -128,14 +154,18 @@ def log_question(question, sql_query, success, valid_sql=False, rows_returned=0,
         "success": success,
         "valid_sql": valid_sql,
         "rows_returned": rows_returned,
-        "error_message": error_message or ""
+        "error_message": error_message or "",
+        "confidence": confidence,
+        "confidence_label": confidence_label,
     }
 
     if os.path.exists(HISTORY_FILE):
         try:
             df = pd.read_csv(HISTORY_FILE)
-            if list(df.columns) != expected_cols:
-                df = pd.DataFrame(columns=expected_cols)
+            # Ensure schema matches
+            for col in expected_cols:
+                if col not in df.columns:
+                    df[col] = None
         except Exception:
             df = pd.DataFrame(columns=expected_cols)
     else:
@@ -181,6 +211,12 @@ def get_database_info():
 
 # Sidebar
 with st.sidebar:
+    # if 'auth_status' in st.session_state and st.session_state['auth_status']:
+    #     st.sidebar.success(f"👋 Logged in as {st.session_state['username']}")
+    #     if st.sidebar.button("Logout"):
+    #         for key in ['auth_status', 'username']:
+    #             st.session_state.pop(key, None)
+    #         st.experimental_rerun()
     st.markdown('<div class="sidebar-header">Database Information</div>', unsafe_allow_html=True)
     if st.button("Load Database Schema", width="stretch"):
         with st.spinner("Loading database schema..."):
@@ -193,7 +229,7 @@ with st.sidebar:
                 st.error("Failed to load database info")
 
 # Tabs
-tab1, tab2, tab3, tab4 = st.tabs(["Query", "History", "Feedback Review", "About"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Query", "History", "Feedback Review","Dashboard", "About"])
 
 # Tab 1: Query
 with tab1:
@@ -247,7 +283,15 @@ with tab1:
                             data = response.json()
                             st.session_state.generated_sql = data["sql"]
                             st.session_state.last_result = data
-                            log_question(user_question, data["sql"], True, data["valid"], len(data["execution_result"]) if data["execution_result"] else 0)
+                            log_question( question=user_question,
+                                        sql_query=data["sql"],
+                                        success=bool(data.get("execution_result")),
+                                        valid_sql=data["valid"],
+                                        rows_returned=len(data["execution_result"]) if data["execution_result"] else 0,
+                                        confidence=data.get("confidence"),
+                                        confidence_label=data.get("confidence_label"),
+                                    )
+
                             st.success("SQL query generated successfully!")
                         else:
                             st.error(f"API Error: {response.text}")
@@ -319,6 +363,51 @@ with tab1:
             st.write("If 👎, please explain and suggest a correction (optional):")
             comment_text = st.text_input("What was wrong?", key="feedback_comment")
             corrected_sql = st.text_area("Your corrected SQL (optional):", height=100, key="user_correction_box")
+            # ============================================================
+            # ✅ Safe "Execute Corrected SQL" Feature
+            # ============================================================
+
+        st.markdown("### 🧪 Test Your Corrected SQL")
+        corrected_query = corrected_sql.strip()
+
+        if st.button("Execute Corrected SQL"):
+            if not corrected_query:
+                st.warning("⚠️ Please enter a SQL query before executing.")
+            elif not corrected_query.lower().startswith("select"):
+                st.error("❌ Only SELECT queries are allowed for safety.")
+            else:
+                try:
+                    import sqlite3
+                    import pandas as pd
+                    from pathlib import Path
+
+                    DB_PATH = Path("data/my_database.sqlite")
+                    conn = sqlite3.connect(DB_PATH)
+
+                    # Execute safely
+                    df = pd.read_sql_query(corrected_query, conn)
+                    df = df.head(100)
+
+                    # ✅ Display results neatly inside an expander
+                    with st.expander("🧩 Corrected Query Results", expanded=True):
+                        st.success(f"✅ Query executed successfully — showing {len(df)} rows.")
+                        st.dataframe(df, width="stretch")
+
+                        # Optional CSV download for corrected query
+                        csv = df.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label="Download Corrected Query Results",
+                            data=csv,
+                            file_name=f"corrected_query_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            mime='text/csv',
+                            use_container_width=True
+                        )
+
+                except Exception as e:
+                    st.error(f"❌ SQL Execution Error: {e}")
+                finally:
+                    conn.close()
+
 
             if st.button("👎 Needs improvement", use_container_width=True):
                 payload = {
@@ -518,8 +607,98 @@ with tab3:
     except Exception as e:
         st.error(f"Error loading feedback: {e}")
 
-# Tab 4: About
+
+# ================================================
+# 🧠 TAB 4 — DASHBOARD (Safe Metadata + Charts)
+# ================================================
 with tab4:
+    st.markdown('<div class="section-header"><h2>System & Database Dashboard</h2></div>', unsafe_allow_html=True)
+
+    DB_PATH = Path("data/my_database.sqlite")
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        # ---------- 📊 Database Overview ----------
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = [t[0] for t in cursor.fetchall()]
+        db_stats = []
+        for t in tables:
+            try:
+                cursor.execute(f"SELECT COUNT(*) FROM {t}")
+                count = cursor.fetchone()[0]
+                db_stats.append({"Table": t, "Rows": count})
+            except Exception:
+                db_stats.append({"Table": t, "Rows": "?"})
+
+        df_db_stats = pd.DataFrame(db_stats)
+
+        st.subheader("📊 Database Overview")
+        col1, col2 = st.columns(2)
+        col1.metric("Total Tables", len(tables))
+        col2.metric("Total Rows", df_db_stats["Rows"].replace("?", 0).astype(int).sum())
+
+        # Bar Chart — Table Sizes
+        if not df_db_stats.empty:
+            chart = px.bar(df_db_stats, x="Table", y="Rows", title="📈 Rows per Table",
+                           color="Table", text="Rows", template="plotly_white")
+            chart.update_traces(textposition='outside')
+            st.plotly_chart(chart, use_container_width=True)
+
+        # ---------- 🧱 Schema Explorer ----------
+        st.subheader("🧱 Schema Details")
+        schema_data = []
+        for t in tables:
+            cursor.execute(f"PRAGMA table_info({t})")
+            cols = cursor.fetchall()
+            for col in cols:
+                schema_data.append({"Table": t, "Column": col[1], "Type": col[2]})
+        df_schema = pd.DataFrame(schema_data)
+        st.dataframe(df_schema, use_container_width=True, height=300)
+
+        # ---------- ⚙️ Query & Model Insights ----------
+        st.subheader("⚙️ Query & Model Insights")
+        if os.path.exists("streamlit_app/history.csv"):
+            df_hist = pd.read_csv("streamlit_app/history.csv")
+
+            # Core metrics
+            total_queries = len(df_hist)
+            success_rate = (df_hist["success"].sum() / total_queries * 100) if total_queries > 0 else 0
+            avg_conf = np.mean([r for r in df_hist.get("confidence", []) if pd.notnull(r)]) if "confidence" in df_hist.columns else None
+
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Total Queries", total_queries)
+            c2.metric("Success Rate", f"{success_rate:.1f}%")
+            c3.metric("Avg Confidence", f"{avg_conf:.1f}%" if avg_conf else "N/A")
+
+            # Trend chart for query count over time
+            df_hist["timestamp"] = pd.to_datetime(df_hist["timestamp"], errors="coerce")
+            df_hist = df_hist.sort_values("timestamp")
+
+            if len(df_hist) > 1:
+                # Trend of queries over time
+                fig_q = px.line(df_hist, x="timestamp", y="success", markers=True,
+                                title="📅 Query Success Trend", template="plotly_white")
+                fig_q.update_yaxes(title="Success (1=True, 0=False)")
+                st.plotly_chart(fig_q, use_container_width=True)
+
+                # Confidence trend if available
+                if "confidence" in df_hist.columns and df_hist["confidence"].notna().any():
+                    fig_conf = px.line(df_hist, x="timestamp", y="confidence",
+                                       title="🎯 Model Confidence Trend", template="plotly_white",
+                                       markers=True, line_shape="spline")
+                    fig_conf.update_yaxes(range=[0, 100])
+                    st.plotly_chart(fig_conf, use_container_width=True)
+        else:
+            st.info("No query history yet. Run some queries first.")
+
+        conn.close()
+    except Exception as e:
+        st.error(f"Error loading dashboard: {e}")
+
+# Tab 5: About
+with tab5:
     st.markdown('<div class="section-header"><h2>About SQLWhisper</h2></div>', unsafe_allow_html=True)
     
     st.markdown("""
