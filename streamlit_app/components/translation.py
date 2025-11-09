@@ -126,7 +126,7 @@ text_labels = {
         "feedback_columns": {
             "question": "Question",
             "verdict": "Verdict",
-            "reason":"Reason"
+            "reason":"Reason",
             "comment": "Comment",
             "created_at": "Created At"
         },
@@ -147,6 +147,10 @@ text_labels = {
             "Medium": "Medium",
             "Low": "Low"
         },
+        "generate_summary": "Generate Summary",
+        "summary_box_title": "Key Insights",
+        "summary_failed": "Summary failed",
+        "summary_warning": "Could not generate summary.",
 
 
         # About text (kept original English)
@@ -318,6 +322,10 @@ text_labels = {
         "Medium": "متوسطة",
         "Low": "منخفضة"
     },
+    "generate_summary": "إنشاء الملخص",
+    "summary_box_title": "أهم النتائج",
+    "summary_failed": "فشل إنشاء الملخص",
+    "summary_warning": "تعذر إنشاء الملخص",
 
         # About text (Arabic)
         "about_rich_html": """
