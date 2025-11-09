@@ -1,6 +1,7 @@
 import streamlit as st
 import json
-from db_fetcher import extract_sqlite_schema
+from streamlit_app.db_fetcher import extract_sqlite_schema
+
 
 st.set_page_config(page_title="Database Uploader", layout="wide")
 
