@@ -8,6 +8,7 @@ from typing import List, Optional, Dict, Any
 import sqlite3
 import logging
 from src.services.text2sql_service import EnhancedText2SQLService
+from src.services.summarization_service import ResultSummarizationService
 
 # -------------------------------------------------
 # ✅ Logging Configuration
@@ -35,6 +36,7 @@ app.add_middleware(
 # ✅ Service Initialization
 # -------------------------------------------------
 t2s_service = EnhancedText2SQLService()
+summarization_service = ResultSummarizationService()
 
 # -------------------------------------------------
 # ✅ Database Helper
@@ -72,6 +74,20 @@ class TestQuery(BaseModel):
 class BatchTestResponse(BaseModel):
     results: List[Dict[str, Any]]
     summary: Dict[str, Any]
+    
+    
+class SummaryRequest(BaseModel):
+    question: str
+    sql_query: str
+    results: List[Dict[str, Any]]
+
+class SummaryResponse(BaseModel):
+    summary: str
+    success: bool
+    row_count: int
+    sample_size: int
+    error: Optional[str] = None
+    insights: Optional[List[str]] = None
 
 # -------------------------------------------------
 # ✅ USER FEEDBACK ENDPOINT
@@ -324,6 +340,32 @@ def get_sample_queries():
         "Display all enrollments with course names"
     ]
     return {"sample_queries": samples, "count": len(samples)}
+
+
+@app.post("/generate-summary", response_model=SummaryResponse)
+def generate_summary(payload: SummaryRequest):
+    """Generate simple English summary of query results."""
+    try:
+        summary_result = summarization_service.generate_summary(
+            question=payload.question,
+            results=payload.results,
+            sql_query=payload.sql_query
+        )
+        return summary_result
+        
+    except Exception as e:
+        logger.error(f"Summary generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Summary generation failed: {str(e)}")
+
+@app.post("/quick-insights")
+def get_quick_insights(payload: SummaryRequest):
+    """Get simple insights from results."""
+    try:
+        insights = summarization_service.quick_insights(payload.results, payload.question)
+        return {"insights": insights, "row_count": len(payload.results)}
+    except Exception as e:
+        logger.error(f"Insights generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Insights generation failed: {str(e)}")
 
 # -------------------------------------------------
 # ✅ App Runner
