@@ -8,10 +8,10 @@ import requests
 import os
 from st_aggrid import AgGrid, GridOptionsBuilder
 from PIL import Image
-from components.translation import t  # 🈯 Translation helper
+from components.translation import t  # Translation helper
 
 # ============================================================
-# 🔧 PATHS & CONSTANTS
+#  PATHS & CONSTANTS
 # ============================================================
 logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
 HISTORY_FILE = "streamlit_app/history.csv"
@@ -19,26 +19,26 @@ API_BASE_URL = "http://127.0.0.1:8000"
 theme_path = os.path.join(os.path.dirname(__file__), "style", "theme.css")
 
 # ============================================================
-# ⚙️ PAGE CONFIGURATION
+#  PAGE CONFIGURATION
 # ============================================================
 st.set_page_config(page_title="SQLWhisper", page_icon=logo_path, layout="wide")
 
 # ============================================================
-# 🎨 LOAD CUSTOM THEME
+#  LOAD CUSTOM THEME
 # ============================================================
 if os.path.exists(theme_path):
     with open(theme_path) as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 else:
-    st.warning("⚠️ theme.css not found in streamlit_app/style/")
+    st.warning("theme.css not found in streamlit_app/style/")
 
 # ============================================================
-# 🌐 LANGUAGE SELECTION
+#  LANGUAGE SELECTION
 # ============================================================
 if "lang" not in st.session_state:
     st.session_state.lang = "en"
 
-lang = st.sidebar.selectbox("🌐 Language / اللغة", ["en", "ar"], index=0, key="lang_select")
+lang = st.sidebar.selectbox(" Language / اللغة", ["en", "ar"], index=0, key="lang_select")
 st.session_state.lang = lang
 
 # RTL adjustment for Arabic
@@ -48,7 +48,7 @@ else:
     st.markdown("<style>html{direction:ltr;text-align:left;}</style>", unsafe_allow_html=True)
 
 # ============================================================
-# 🧩 HEADER (LOGO + TITLE)
+#  HEADER (LOGO + TITLE)
 # ============================================================
 header_col1, header_col2 = st.columns([0.2, 0.8])
 with header_col1:
@@ -62,7 +62,7 @@ with header_col2:
     st.markdown(f'<p class="app-subtitle">{t("app_subtitle", lang)}</p>', unsafe_allow_html=True)
 
 # ============================================================
-# 🧠 SESSION STATE
+#  SESSION STATE
 # ============================================================
 for key, value in {
     "generated_sql": "",
@@ -75,7 +75,7 @@ for key, value in {
         st.session_state[key] = value
 
 # ============================================================
-# 🧰 HELPERS
+# HELPERS
 # ============================================================
 def check_api_health():
     try:
@@ -127,11 +127,11 @@ def log_question(question, sql_query, success, valid_sql=False, rows_returned=0,
     df.to_csv(HISTORY_FILE, index=False)
 
 # ============================================================
-# 🧭 SIDEBAR
+#  SIDEBAR
 # ============================================================
 st.sidebar.markdown(f'<div class="sidebar-header"><h3>{t("database_info", lang)}</h3></div>', unsafe_allow_html=True)
 
-if st.sidebar.button(t("load_schema", lang), use_container_width=True):
+if st.sidebar.button(t("load_schema", lang), width='stretch'):
     with st.spinner(t("loading_schema", lang)):
         db_info = get_database_info()
         if db_info:
@@ -141,7 +141,7 @@ if st.sidebar.button(t("load_schema", lang), use_container_width=True):
             st.error(t("db_failed", lang))
 
 # ============================================================
-# 📑 MAIN TABS
+# MAIN TABS
 # ============================================================
 tabs = st.tabs([
     t("query_tab", lang),
@@ -152,12 +152,12 @@ tabs = st.tabs([
 ])
 
 # ============================================================
-# 🧮 TAB 1: QUERY
+# TAB 1: QUERY
 # ============================================================
 with tabs[0]:
     if not check_api_health():
         st.error(t("backend_not_running", lang))
-        st.code(t("start_server_cmd", lang))
+        st.code("uvicorn main:app --reload")
         st.stop()
 
     # Sample queries
@@ -169,7 +169,7 @@ with tabs[0]:
     st.markdown(f'<div class="section-title">{t("quick_queries", lang)}</div>', unsafe_allow_html=True)
     quick_cols = st.columns(2)
     for i, q in enumerate(sample_queries[:4]):
-        if quick_cols[i % 2].button(q, key=f"sample_{i}", use_container_width=True):
+        if quick_cols[i % 2].button(q, key=f"sample_{i}", width='stretch'):
             st.session_state.last_question = q
             st.session_state.generated_sql = ""
             st.session_state.last_result = None
@@ -184,7 +184,7 @@ with tabs[0]:
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        if st.button(t("generate_sql", lang), type="primary", use_container_width=True):
+        if st.button(t("generate_sql", lang), type="primary", width='stretch'):
             if not user_question.strip():
                 st.warning(t("enter_question_first", lang))
             else:
@@ -212,29 +212,36 @@ with tabs[0]:
                         st.error(f"{t('request_failed', lang)}: {e}")
 
     with col_btn2:
-        if st.session_state.generated_sql and st.button(t("clear_results", lang), use_container_width=True):
+        if st.session_state.generated_sql and st.button(t("clear_results", lang), width='stretch'):
             st.session_state.generated_sql = ""
             st.session_state.last_result = None
             st.rerun()
 
-    # Results display
+    # RESULTS DISPLAY
     if st.session_state.generated_sql and st.session_state.last_result:
         result = st.session_state.last_result
 
         st.markdown(f'<div class="section-title">{t("generated_sql", lang)}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="sql-display">{result["sql"]}</div>', unsafe_allow_html=True)
 
+        # Confidence badge
         if result.get("confidence"):
             label = result["confidence_label"]
             color = {"High": "#4caf50", "Medium": "#ff9800", "Low": "#f44336"}.get(label, "#9e9e9e")
             st.markdown(
                 f'<span class="status-badge" style="background-color:{color}20; color:{color};">'
-                f'{t("confidence_label", lang).format(conf=result["confidence"], label=label)}</span>',
+                f'{t("confidence_label", lang).format(conf=result["confidence"], label=label)}'
+                f'</span>',
                 unsafe_allow_html=True
             )
 
-        # Feedback
-        st.markdown(f'<div class="section-title">{t("rate_sql", lang)}</div>', unsafe_allow_html=True)
+        # Feedback section
+        st.markdown(f'<div class="section-title">{t("feedback_tab", lang)}</div>', unsafe_allow_html=True)
+
+        # Session state to track when to show correction boxes
+        if "show_feedback_form" not in st.session_state:
+            st.session_state.show_feedback_form = False
+
         fb_col1, fb_col2 = st.columns(2)
 
         with fb_col1:
@@ -247,12 +254,27 @@ with tabs[0]:
                     "user_correction": None
                 })
                 st.success(t("thanks_feedback", lang))
+                st.session_state.show_feedback_form = False  # hide form if it was open
 
         with fb_col2:
-            st.markdown('<div class="feedback-area">', unsafe_allow_html=True)
-            comment = st.text_input(t("what_was_wrong", lang), key="fb_comment", placeholder=t("corrected_sql_optional", lang))
-            correction = st.text_area(t("corrected_sql_optional", lang), key="fb_correction", height=100)
+            # When user clicks "Needs Improvement", toggle the form
             if st.button(t("needs_improvement", lang), use_container_width=True):
+                st.session_state.show_feedback_form = not st.session_state.show_feedback_form
+
+        # Show text inputs only if "Needs Improvement" was clicked
+        if st.session_state.show_feedback_form:
+            st.markdown('<div class="feedback-area">', unsafe_allow_html=True)
+            comment = st.text_input(
+                t("what_was_wrong", lang),
+                key="fb_comment",
+                placeholder=t("optional_explanation", lang)
+            )
+            correction = st.text_area(
+                t("corrected_sql_optional", lang),
+                key="fb_correction",
+                height=100
+            )
+            if st.button(t("submit feedback", lang), type="primary", use_container_width=True):
                 requests.post(f"{API_BASE_URL}/feedback", json={
                     "question": user_question,
                     "generated_sql": result["sql"],
@@ -261,14 +283,16 @@ with tabs[0]:
                     "user_correction": correction or None
                 })
                 st.success(t("feedback_saved_down", lang))
+                st.session_state.show_feedback_form = False
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # Metrics
+
+        # Metrics row
         st.markdown(f'<div class="section-title">{t("execution", lang)}</div>', unsafe_allow_html=True)
         m1, m2, m3 = st.columns(3)
         with m1:
             valid = result["valid"]
-            st.markdown(f'<div class="metric-card"><div class="metric-value">{"✓" if valid else "✗"}</div><div class="metric-label">{t("sql_syntax", lang)}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-card"><div class="metric-value">{"✓" if valid else "✗"}</div><div class="metric-label">{t("valid_sql", lang)}</div></div>', unsafe_allow_html=True)
         with m2:
             executed = result["execution_result"] is not None
             st.markdown(f'<div class="metric-card"><div class="metric-value">{"✓" if executed else "✗"}</div><div class="metric-label">{t("execution", lang)}</div></div>', unsafe_allow_html=True)
@@ -277,28 +301,51 @@ with tabs[0]:
             st.markdown(f'<div class="metric-card"><div class="metric-value">{rows}</div><div class="metric-label">{t("rows", lang)}</div></div>', unsafe_allow_html=True)
 
         if result.get("error"):
-            st.error(f"{t('sql_exec_error', lang)}: {result['error']}")
+            st.error(f"{t('exec_error', lang)}: {result['error']}")
 
         if result["execution_result"]:
-            st.markdown(f'<div class="section-title">{t("query_results", lang)}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="section-title">{t("results", lang)}</div>', unsafe_allow_html=True)
+
+            # Summary on demand
+            if st.button(t("generate_summary", lang), width='stretch'):
+                with st.spinner(t("generating_sql", lang)):
+                    try:
+                        payload = {
+                            "question": user_question,
+                            "sql_query": result["sql"],
+                            "results": result["execution_result"]
+                        }
+                        res = requests.post(f"{API_BASE_URL}/quick-insights", json=payload)
+                        if res.status_code == 200:
+                            insights = res.json()["insights"]
+                            st.markdown(
+                                f'<div class="summary-box"><h4>{t("summary_box_title", lang)}</h4>'
+                                + "".join(f"<p>• {insight}</p>" for insight in insights)
+                                + '</div>',
+                                unsafe_allow_html=True
+                            )
+                        else:
+                            st.warning(t("summary_warning", lang))
+                    except Exception as e:
+                        st.error(f"{t('summary_failed', lang)}: {e}")
+
+            # Results table
             df = pd.DataFrame(result["execution_result"])
             gb = GridOptionsBuilder.from_dataframe(df)
             gb.configure_default_column(filterable=True, sortable=True, resizable=True)
             AgGrid(df, gridOptions=gb.build(), height=min(400, 25 * len(df) + 150), theme="alpine")
 
+            # Download
             st.download_button(
                 "📥 " + t("download_results_csv", lang),
                 df.to_csv(index=False).encode("utf-8"),
                 f"sqlwhisper_results_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
                 "text/csv",
-                use_container_width=True
+                width='stretch'
             )
 
 # ============================================================
-# 🧾 TAB 2: HISTORY
-# ============================================================
-# ============================================================
-# 🧾 TAB 2: HISTORY
+# TAB 2: HISTORY
 # ============================================================
 with tabs[1]:
     st.markdown(f'<div class="section-title">{t("history_tab", lang)}</div>', unsafe_allow_html=True)
@@ -307,31 +354,23 @@ with tabs[1]:
         df = pd.read_csv(HISTORY_FILE)
 
         if not df.empty:
-            # 🔁 Translate content if Arabic selected
+            # Translate content if Arabic selected
             if lang == "ar":
-                # Replace values using translation mappings
                 df["success"] = df["success"].replace(t("success_labels", lang))
                 df["valid_sql"] = df["valid_sql"].replace(t("valid_sql_labels", lang))
                 df["confidence_label"] = df["confidence_label"].replace(t("confidence_labels", lang))
-
-                # Rename column headers
                 df.rename(columns=t("history_columns", lang), inplace=True)
             else:
-                # Ensure English headers (optional)
                 df.rename(columns=t("history_columns", lang), inplace=True)
 
-            AgGrid(
-                df.sort_values(by=df.columns[0], ascending=False),
-                height=500,
-                theme="alpine"
-            )
+            AgGrid(df.sort_values(by=df.columns[0], ascending=False), height=500, theme="alpine")
         else:
             st.info(t("no_history_yet", lang))
     else:
         st.info(t("no_query_history", lang))
 
 # ============================================================
-# 💬 TAB 3: FEEDBACK
+#  TAB 3: FEEDBACK
 # ============================================================
 with tabs[2]:
     st.markdown(f'<div class="section-title">{t("user_feedback_review", lang)}</div>', unsafe_allow_html=True)
@@ -342,37 +381,140 @@ with tabs[2]:
         conn.close()
 
         if not df.empty:
-            # 🔁 Translate content if Arabic selected
             df["verdict"] = df["verdict"].replace(t("verdict_labels", lang))
             df.rename(columns=t("feedback_columns", lang), inplace=True)
-
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width='stretch')
         else:
             st.info(t("no_feedback", lang))
     except Exception as e:
         st.error(f"{t('error_loading_feedback', lang)}: {e}")
-# ============================================================
-# 📊 TAB 4: DASHBOARD
-# ============================================================
-with tabs[3]:
-    st.markdown(f'<div class="section-title">{t("dashboard_tab", lang)}</div>', unsafe_allow_html=True)
-    st.info(t("error_loading_dashboard", lang))
 
 # ============================================================
-# ℹ️ TAB 5: ABOUT
+# TAB 4: DASHBOARD
+# ============================================================
+with tabs[3]:
+    st.markdown(f'<div class="section-header"><h2>{t("system_db_dashboard", lang)}</h2></div>', unsafe_allow_html=True)
+
+    DB_PATH = Path("data/my_database.sqlite")
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        # ---------- Database Overview ----------
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = [row[0] for row in cursor.fetchall()]
+        db_stats = []
+        for table in tables:
+            try:
+                cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                count = cursor.fetchone()[0]
+                db_stats.append({"Table": table, "Rows": count})
+            except Exception:
+                db_stats.append({"Table": table, "Rows": "?"})
+
+        df_db_stats = pd.DataFrame(db_stats)
+
+        st.subheader(t("database_overview", lang))
+        col1, col2 = st.columns(2)
+        col1.metric(t("total_tables", lang), len(tables))
+        total_rows = df_db_stats["Rows"].replace("?", 0).astype(int).sum()
+        col2.metric(t("total_rows", lang), total_rows)
+
+        # ---------- Bar Chart — Table Sizes ----------
+        if not df_db_stats.empty:
+            chart = px.bar(
+                df_db_stats,
+                x="Table",
+                y="Rows",
+                title=t("total_rows", lang),
+                color="Table",
+                text="Rows",
+                template="plotly_white"
+            )
+            chart.update_traces(textposition="outside")
+            st.plotly_chart(chart, use_container_width=True)
+
+        # ---------- Schema Explorer ----------
+        st.subheader(t("schema_details", lang))
+        schema_data = []
+        for table in tables:
+            cursor.execute(f"PRAGMA table_info({table})")
+            cols = cursor.fetchall()
+            for col in cols:
+                schema_data.append({"Table": table, "Column": col[1], "Type": col[2]})
+        df_schema = pd.DataFrame(schema_data)
+        st.dataframe(df_schema, use_container_width=True, height=300)
+
+        # ---------- Query & Model Insights ----------
+        st.subheader(t("query_model_insights", lang))
+        if os.path.exists("streamlit_app/history.csv"):
+            df_hist = pd.read_csv("streamlit_app/history.csv")
+
+            # Core metrics
+            total_queries = len(df_hist)
+            success_rate = (df_hist["success"].sum() / total_queries * 100) if total_queries > 0 else 0
+            avg_conf = np.mean([r for r in df_hist.get("confidence", []) if pd.notnull(r)]) if "confidence" in df_hist.columns else None
+
+            c1, c2, c3 = st.columns(3)
+            c1.metric(t("total_queries", lang), total_queries)
+            c2.metric(t("success_rate", lang), f"{success_rate:.1f}%")
+            c3.metric("Avg Confidence" if lang == "en" else "متوسط الثقة", f"{avg_conf:.1f}%" if avg_conf else "N/A")
+
+            # ---------- Trend chart for query success ----------
+            df_hist["timestamp"] = pd.to_datetime(df_hist["timestamp"], errors="coerce")
+            df_hist = df_hist.sort_values("timestamp")
+
+            if len(df_hist) > 1:
+                # Trend of queries over time
+                fig_q = px.line(
+                    df_hist,
+                    x="timestamp",
+                    y="success",
+                    markers=True,
+                    title=t("query_success_trend", lang),
+                    template="plotly_white"
+                )
+                fig_q.update_yaxes(title=t("success", lang))
+                st.plotly_chart(fig_q, use_container_width=True)
+
+                # ---------- Confidence trend ----------
+                if "confidence" in df_hist.columns and df_hist["confidence"].notna().any():
+                    fig_conf = px.line(
+                        df_hist,
+                        x="timestamp",
+                        y="confidence",
+                        title=t("model_conf_trend", lang),
+                        template="plotly_white",
+                        markers=True,
+                        line_shape="spline"
+                    )
+                    fig_conf.update_yaxes(range=[0, 100])
+                    st.plotly_chart(fig_conf, use_container_width=True)
+                else:
+                    st.info(t("confidence_unavailable", lang))
+            else:
+                st.info(t("no_query_yet_run", lang))
+        else:
+            st.info(t("no_query_history", lang))
+
+        conn.close()
+    except Exception as e:
+        st.error(f"{t('error_loading_dashboard', lang)}: {e}")
+
+# ============================================================
+# TAB 5: ABOUT
 # ============================================================
 with tabs[4]:
     st.markdown(f'<div class="section-title">{t("about_sqlwhisper", lang)}</div>', unsafe_allow_html=True)
     st.markdown(t("about_rich_html", lang), unsafe_allow_html=True)
+
 # ============================================================
-# 💜 FOOTER
+#  FOOTER
 # ============================================================
-# === FOOTER ===
 st.markdown("""
 <hr style='margin-top:3rem; border-top:1px solid #e0e0e0;'>
 <div style='text-align:center; color:#6A0DAD; font-weight:600; font-size:0.95rem;'>
     © 2025 Made with 💜 by <span style='color:#8A2BE2;'>SQLWhisper Team</span>
 </div>
 """, unsafe_allow_html=True)
-
-
