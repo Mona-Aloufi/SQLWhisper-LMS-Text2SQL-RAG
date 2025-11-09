@@ -1,0 +1,168 @@
+/* ============================================================
+   SQLWhisper -UI
+   ============================================================ */
+
+:root {
+    --primary: #6A0DAD;  /* deep purple */
+    --accent: #8A2BE2;   /* light purple */
+    --orange: #FF7B00;   /* warm orange accent */
+    --text: #1C1C1E;     /* near-black text */
+    --bg: #F8F8F9;       /* ✨ off-white background */
+    --bg-alt: #F4F4F5;   /* subtle gray for sidebar/cards */
+    --radius: 12px;
+    --shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+/* Global background override */
+html,
+body,
+[data-testid="stAppViewContainer"],
+[data-testid="stApp"] {
+    background-color: var(--bg) !important;
+}
+
+/* Sidebar background */
+[data-testid="stSidebar"] {
+    background: var(--bg-alt);
+    border-right: 2px solid #e9e9ec;
+}
+
+    /* Base reset */
+.reportview-container .main .block-container {
+        padding-top: 2rem;
+    }
+    
+    /* Header styling */
+.app-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+.app-header img {
+        height: 60px;
+    }
+.app-title {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #4b0082;
+        margin: 0;
+    }
+.app-subtitle {
+        font-size: 1.1rem;
+        color: #7e57c2;
+        font-weight: 400;
+        margin-top: 0.25rem;
+    }
+
+    /* Cards */
+.stCard {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(106, 13, 173, 0.08);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #f0f0f0;
+    }
+
+    /* Buttons */
+.stButton > button {
+        background: linear-gradient(135deg, #6a0dad, #8a2be2);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.6rem 1.2rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        width: 100%;
+    }
+.stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(106, 13, 173, 0.3);
+    }
+.stButton > button:active {
+        transform: translateY(0);
+    }
+
+    /* SQL box */
+.sql-display {
+        background: #f9f7ff;
+        border-left: 4px solid #8a2be2;
+        padding: 1.2rem;
+        border-radius: 8px;
+        font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
+        font-size: 1.05rem;
+        line-height: 1.5;
+        margin: 1.2rem 0;
+        overflow-x: auto;
+    }
+
+    /* Status badges */
+.status-badge {
+        display: inline-block;
+        padding: 0.35rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin: 0.2rem;
+    }
+
+    /* Summary box */
+.summary-box {
+        background: #f8f9ff;
+        border: 1px solid #e6e6ff;
+        border-radius: 10px;
+        padding: 1.2rem;
+        margin: 1.2rem 0;
+    }
+
+    /* Section headers */
+.section-title {
+        font-size: 1.4rem;
+        color: #5a1a8c;
+        margin: 1.8rem 0 1rem;
+        font-weight: 600;
+        padding-bottom: 0.4rem;
+        border-bottom: 2px solid #f0f0ff;
+    }
+
+    /* Feedback area */
+.feedback-area {
+        background: #faf9ff;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-top: 1rem;
+    }
+
+    /* Metrics */
+.metric-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.2rem;
+        text-align: center;
+        box-shadow: 0 3px 10px rgba(106, 13, 173, 0.07);
+        border: 1px solid #f3f3f3;
+    }
+.metric-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #6a0dad;
+        margin: 0.3rem 0;
+    }
+.metric-label {
+        font-size: 0.95rem;
+        color: #777;
+        font-weight: 500;
+    }
+
+    /* Inputs */
+.stTextArea textarea, .stTextInput input {
+        border-radius: 8px;
+        border: 1px solid #dcdcdc;
+}
+
+    /* Expander */
+.streamlit-expanderHeader {
+        font-weight: 600 !important;
+        color: #6a0dad !important;
+}    
