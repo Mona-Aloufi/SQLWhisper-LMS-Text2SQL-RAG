@@ -7,6 +7,86 @@ text_labels = {
         "app_title": "SQLWhisper",
         "app_subtitle": "Transform natural language questions into accurate SQL queries",
         
+         # ============================================================
+        # 🏠 Home Page Text
+        # ============================================================
+        "welcome_title": "👋 Welcome to SQLWhisper",
+        "welcome_sub": "Easily transform your natural language questions into accurate SQL queries.<br>Start by uploading your database schema or use our default demo.",
+        "feature_secure": "🔒 <strong>Secure & Private</strong> — Enterprise-grade data protection",
+        "feature_ai": "🧠 <strong>AI-Powered</strong> — Advanced NLP for accurate SQL generation",
+        "feature_insights": "📊 <strong>Rich Insights</strong> — Interactive visualization & analytics",
+        "upload_schema_btn": "📤 Upload Schema",
+        "default_schema_btn": "Continue with Default",
+        "upload_success": "{file} uploaded successfully!",
+        "upload_info": "Now go to the <strong>Query</strong> page to start asking questions.",
+        "default_info": "Using the default demo schema.<br>Navigate to the <strong>Query</strong> page to explore and generate SQL!",
+         
+        # ============================================================
+        # 🗄️ Data Dashboard translations
+        # ============================================================
+        "data_dashboard_title": "Data Dashboard",
+        "data_dashboard_subtitle": "Explore your uploaded or demo database structure, tables, and columns.",
+        "filter_section": "Filter Options",
+        "table_selection_mode": "Table Selection Mode",
+        "single_table": "Single Table",
+        "multiple_tables": "Multiple Tables",
+        "choose_table": "Choose a Table",
+        "choose_multiple_tables": "Choose Multiple Tables",
+        "no_table_selected": "No table selected yet.",
+        "total_tables": "Total Tables",
+        "selected_tables": "Selected Tables",
+        "total_rows": "Total Rows",
+        "rows_chart_title": "Number of Rows per Table",
+        "schema_explorer": "Schema Explorer",
+        "show_schema_details": "Show Schema Details",
+        "data_preview": "Data Preview",
+        "error_loading_data": "Error loading data",
+        "no_database_loaded": "No database loaded yet. Please upload one from the home page.",
+        "table_name": "Table Name",
+        "rows_count": "Row Count",
+        "database_summary": "Database Summary",
+        "database_file": "Database File",
+        "uploaded_success": "File uploaded successfully",
+        "error_loading_dashboard": "Error loading the dashboard",
+        "download_csv": "Download CSV",
+        "erd_diagram": "ERD Diagram",
+
+
+        # ============================================================
+        # 🤖 Model Dashboard translations
+        # ============================================================
+        "model_dashboard_title": "Model Dashboard",
+        "model_dashboard_subtitle": "Monitor your AI model's performance and query statistics.",
+        "avg_confidence": "Average Confidence",
+        "total_queries_label": "Total Queries",
+        "execution_success_label": "Execution Success",
+        "valid_syntax_label": "Valid SQL Syntax",
+        "performance_over_time": "Performance Over Time",
+        "query_trend": "Query Success Trend",
+        "confidence_trend": "Model Confidence Trend",
+        "no_history_data": "No model performance data available yet.",
+
+        #ChatBot
+        "chatbot_title": "AI Chat Assistant",
+        "chatbot_subtitle": "Ask SQLWhisper’s assistant anything — from SQL help to system guidance.",
+        "chatbot_greeting": "Hi! I’m your SQLWhisper Assistant 🤖",
+        "chatbot_schema_question": "Would you like to upload your own database schema or continue with the default demo?",
+        "upload_schema_btn": "Upload Schema",
+        "use_default_btn": "Use Default Demo",
+        "upload_prompt": "Upload your SQLite, DB, or CSV file",
+        "uploaded_success": "uploaded successfully!",
+        "chatbot_ready_after_upload": "Great! Your data is ready. You can now start asking SQL-related questions.",
+        "chatbot_default_reply": "Good choice! Using the demo database — ask your first question below.",
+        "chat_placeholder": "Type your question here...",
+        "chat_generating": "Generating response...",
+        "chat_error_no_reply": "No response received from model.",
+        "chat_error_server": "Server returned an error.",
+        "chat_error_connection": "Could not connect to the backend.",
+        "chat_connect_instruction": "Click below to connect SQLWhisper Assistant to the backend before chatting.",
+        "connect_backend": "Connect to Backend",
+        "checking_connection": "Checking backend connection...",
+        "backend_connected_ok": "Connected successfully to backend.",
+
         # Tabs
         "query_tab": "Query",
         "history_tab": "History",
@@ -181,6 +261,85 @@ text_labels = {
         "app_title": "SQLWhisper",
         "app_subtitle": "حوّل سؤالك العادي لاستعلام SQL جاهز",
         
+        # ============================================================
+        # 🏠 الصفحة الرئيسية
+        # ============================================================
+        "welcome_title": "👋 أهلاً بك في SQLWhisper",
+        "welcome_sub": "حوّل أسئلتك باللغة الطبيعية إلى استعلامات SQL دقيقة.<br>ابدأ برفع هيكل قاعدة البيانات الخاصة بك أو استخدم النسخة التجريبية الافتراضية.",
+        "feature_secure": "🔒 <strong>آمن وموثوق</strong> — حماية على مستوى المؤسسات",
+        "feature_ai": "🧠 <strong>مدعوم بالذكاء الاصطناعي</strong> — معالجة لغوية متقدمة لتوليد SQL بدقة",
+        "feature_insights": "📊 <strong>رؤى تحليلية غنية</strong> — تصورات ونتائج تفاعلية",
+        "upload_schema_btn": "📤 رفع هيكل قاعدة البيانات",
+        "default_schema_btn": "استخدام النسخة الافتراضية",
+        "upload_success": "تم رفع {file} بنجاح!",
+        "upload_info": "انتقل إلى صفحة <strong>الاستعلام</strong> لبدء طرح الأسئلة.",
+        "default_info": "يتم استخدام النسخة التجريبية الافتراضية.<br>انتقل إلى صفحة <strong>الاستعلام</strong> للاستكشاف وإنشاء الاستعلامات.",
+        # ============================================================
+        # 🗄️ Data Dashboard translations
+        # ============================================================
+        "data_dashboard_title": "لوحة بيانات القاعدة",
+        "data_dashboard_subtitle": "استكشف بنية قاعدة البيانات المرفوعة أو الافتراضية، والجداول، والأعمدة.",
+        "filter_section": "خيارات التصفية",
+        "table_selection_mode": "وضع اختيار الجداول",
+        "single_table": "جدول واحد",
+        "multiple_tables": "عدة جداول",
+        "choose_table": "اختر جدولاً",
+        "choose_multiple_tables": "اختر جداول متعددة",
+        "no_table_selected": "لم يتم تحديد أي جدول بعد.",
+        "total_tables": "إجمالي الجداول",
+        "selected_tables": "الجداول المحددة",
+        "total_rows": "إجمالي الصفوف",
+        "rows_chart_title": "عدد الصفوف في كل جدول",
+        "schema_explorer": "مستكشف المخطط",
+        "show_schema_details": "عرض تفاصيل المخطط",
+        "data_preview": "معاينة البيانات",
+        "error_loading_data": "حدث خطأ أثناء تحميل البيانات",
+        "no_database_loaded": "لم يتم تحميل أي قاعدة بيانات بعد. يرجى رفع قاعدة من الصفحة الرئيسية.",
+        "table_name": "اسم الجدول",
+        "rows_count": "عدد الصفوف",
+        "database_summary": "ملخص قاعدة البيانات",
+        "database_file": "ملف قاعدة البيانات",
+        "uploaded_success": "تم رفع الملف بنجاح",
+        "error_loading_dashboard": "خطأ أثناء تحميل لوحة البيانات",
+        "download_csv": "تحميل البيانات كملف CSV",
+        \
+
+        # ============================================================
+        # 🤖 Model Dashboard translations
+        # ============================================================
+        "model_dashboard_title": "لوحة أداء النموذج",
+        "model_dashboard_subtitle": "راقب أداء نموذج الذكاء الاصطناعي وإحصاءات الاستعلامات.",
+        "avg_confidence": "متوسط الثقة",
+        "total_queries_label": "إجمالي الاستعلامات",
+        "execution_success_label": "نجاح التنفيذ",
+        "valid_syntax_label": "صحة بناء SQL",
+        "performance_over_time": "الأداء مع مرور الوقت",
+        "query_trend": "اتجاه نجاح الاستعلامات",
+        "confidence_trend": "اتجاه الثقة في النموذج",
+        "no_history_data": "لا توجد بيانات أداء للنموذج بعد.",
+        "erd_diagram": "مخطط العلاقات بين الجداول",
+        "chatbot_title": "المساعد الذكي",
+        "chatbot_subtitle": "اسأل مساعد SQLWhisper أي شيء — من استفسارات SQL إلى إرشادات النظام.",
+        "chatbot_greeting": "مرحباً! أنا مساعد SQLWhisper 🤖",
+        "chatbot_schema_question": "هل ترغب في تحميل هيكل قاعدة بياناتك أو المتابعة بقاعدة البيانات التجريبية؟",
+        "upload_schema_btn": "تحميل قاعدة البيانات",
+        "use_default_btn": "استخدام التجريبية",
+        "upload_prompt": "قم بتحميل ملف SQLite أو DB أو CSV",
+        "uploaded_success": "تم التحميل بنجاح!",
+        "chatbot_ready_after_upload": "رائع! تم تجهيز بياناتك، يمكنك الآن طرح أسئلة SQL.",
+        "chatbot_default_reply": "خيار رائع! سيتم استخدام قاعدة البيانات التجريبية، ابدأ بطرح سؤالك الأول.",
+        "chat_placeholder": "اكتب سؤالك هنا...",
+        "chat_generating": "جارٍ توليد الرد...",
+        "chat_error_no_reply": "لم يتم استلام رد من النموذج.",
+        "chat_error_server": "حدث خطأ من الخادم.",
+        "chat_error_connection": "تعذّر الاتصال بالخادم.",
+        "chat_connect_instruction": "اضغط أدناه للاتصال بمساعد SQLWhisper قبل بدء الدردشة.",
+        "connect_backend": "الاتصال بالخادم",
+        "checking_connection": "جارٍ التحقق من الاتصال...",
+        "backend_connected_ok": "تم الاتصال بالخادم بنجاح.",
+
+
+
         # Tabs
         "query_tab": "الاستعلام",
         "history_tab": "السجل",

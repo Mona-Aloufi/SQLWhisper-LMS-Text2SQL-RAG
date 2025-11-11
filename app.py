@@ -7,6 +7,8 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import sqlite3
 import logging
+from pydantic import BaseModel
+import requests 
 from src.services.text2sql_service import EnhancedText2SQLService
 from src.services.summarization_service import ResultSummarizationService
 
@@ -328,18 +330,71 @@ def batch_test(queries: List[TestQuery], database_path: str = "data/my_database.
 # ✅ Sample Queries Endpoint
 # -------------------------------------------------
 @app.get("/sample-queries")
-def get_sample_queries():
-    """Provide sample questions for quick testing."""
-    samples = [
-        "Show all tables in the database",
-        "Count total students",
-        "List top 5 students by score",
-        "Show all professors and departments",
-        "What are the average grades per course?",
-        "Which student has the highest score?",
-        "Display all enrollments with course names"
-    ]
-    return {"sample_queries": samples, "count": len(samples)}
+def get_sample_queries(database_path: str = "data/my_database.sqlite"):
+    """
+    Dynamically generate natural sample queries based on the database structure.
+    If the DB has common table names (students, courses, etc.), create smart examples.
+    Otherwise, fall back to generic examples.
+    """
+    try:
+        conn = get_db_connection(database_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = [row[0] for row in cursor.fetchall()]
+        conn.close()
+
+        if not tables:
+            # Fallback if DB is empty
+            samples = [
+                "Show all tables in the database",
+                "Describe the database schema",
+                "Count total records in all tables"
+            ]
+            return {"sample_queries": samples, "count": len(samples)}
+
+        # ✅ Intelligent generation
+        samples = []
+        for tname in tables[:5]:  # only suggest up to 5 tables
+            samples.extend([
+                f"Show the first 5 rows from {tname}",
+                f"Count total records in {tname}",
+                f"List all column names in {tname}",
+                f"Show top 10 records from {tname}",
+                f"Find duplicates in {tname} if any",
+            ])
+
+        # ✅ Add a few general queries
+        samples += [
+            "List all tables in the database",
+            "Show tables with the most rows",
+            "Describe all relationships between tables",
+            "Find columns that contain date or time information",
+        ]
+
+        # ✅ Remove duplicates and sort
+        samples = sorted(list(set(samples)))
+
+        return {
+            "database_path": database_path,
+            "sample_queries": samples,
+            "count": len(samples)
+        }
+
+    except Exception as e:
+        logger.error(f"Error generating sample queries: {e}")
+        # fallback on failure
+        fallback = [
+            "Show all tables in the database",
+            "Count total records",
+            "List top 5 rows from any table",
+            "Describe table schema"
+        ]
+        return {
+            "database_path": database_path,
+            "sample_queries": fallback,
+            "count": len(fallback),
+            "error": str(e)
+        }
 
 
 @app.post("/generate-summary", response_model=SummaryResponse)
@@ -368,7 +423,162 @@ def get_quick_insights(payload: SummaryRequest):
         raise HTTPException(status_code=500, detail=f"Insights generation failed: {str(e)}")
 
 # -------------------------------------------------
-# ✅ App Runner
+# ✅ Chatbot Assistant Endpoint (Schema-Aware + Conversational)
+# -------------------------------------------------
+class ChatRequest(BaseModel):
+    message: str
+    database_path: str = "data/my_database.sqlite"
+
+
+def format_rows_human(rows, max_rows=5):
+    """Convert SQL rows into readable sentences."""
+    if not rows:
+        return "No matching records were found."
+
+    text_lines = []
+    for i, row in enumerate(rows[:max_rows], 1):
+        # Only show up to 4 columns for clarity
+        parts = [f"{k}: {v}" for k, v in list(row.items())[:4]]
+        text_lines.append(f"{i}. " + ", ".join(parts))
+    return "\n".join(text_lines)
+
+
+@app.post("/chat")
+def chat_with_sql_assistant(req: ChatRequest):
+    """
+    Conversational AI Assistant:
+    - Uses EnhancedText2SQLService to generate SQL
+    - Executes SQL on the user's DB
+    - Returns natural-language summary and results
+    """
+    try:
+        # 1️⃣ Setup and generate SQL
+        db_path = req.database_path or "data/my_database.sqlite"
+        conn = get_db_connection(db_path)
+
+        # Generate SQL using schema-aware service
+        sql_result = t2s_service.generate_sql(req.message, conn)
+        sql_query = sql_result.get("sql", "").strip()
+        schema_used = sql_result.get("schema_used", "")
+
+        if not sql_query:
+            return {"reply": "⚠️ I couldn’t generate a valid SQL query for that question."}
+
+        # 2️⃣ Execute the SQL
+        try:
+            cursor = conn.cursor()
+            cursor.execute(sql_query)
+            rows = [dict(r) for r in cursor.fetchall()]
+        except Exception as e:
+            conn.close()
+            return {"reply": f"❌ Query execution error:\n{e}"}
+        conn.close()
+
+        # 3️⃣ Prepare base conversational text
+        total_rows = len(rows)
+        if total_rows == 0:
+            base_reply = "Hmm, I ran the query but didn’t find any matching data."
+        elif total_rows == 1:
+            base_reply = "Here’s the single record I found."
+        else:
+            base_reply = f"I ran your query successfully and found {total_rows} records."
+
+        # 4️⃣ Convert results into human-readable preview
+        readable_preview = format_rows_human(rows)
+        base_reply = f"{base_reply}\n\nHere’s what I found:\n{readable_preview}"
+
+        # 5️⃣ Prepare prompt for local LLM (schema-aware)
+        prompt = f"""
+        You are SQLWhisper — an intelligent, friendly assistant that explains SQL query results clearly.
+
+        DATABASE SCHEMA (for context):
+        {schema_used}
+
+        USER QUESTION:
+        {req.message}
+
+        GENERATED SQL:
+        {sql_query}
+
+        QUERY RESULTS:
+        Total rows: {total_rows}
+        Sample rows (human-readable):
+        {readable_preview}
+
+        TASK:
+        - Explain the query result naturally in 2–4 sentences.
+        - Be concise and conversational, like talking to a user.
+        - If user asks for "top one" or "highest", mention only that record.
+        - Do NOT repeat SQL or say database terms like "query" or "table".
+        """
+
+        try:
+            response = requests.post(
+                "http://localhost:11434/api/generate",
+                json={"model": "phi", "prompt": prompt},
+                timeout=45
+            )
+
+            reply_text = ""
+            for line in response.iter_lines():
+                if line:
+                    data = line.decode("utf-8")
+                    if '"response":' in data:
+                        reply_text += data.split('"response":"')[1].split('"')[0]
+            reply_text = reply_text.strip() or base_reply
+
+        except Exception as e:
+            logger.warning(f"LLM generation failed: {e}")
+            reply_text = base_reply
+
+        # 6️⃣ Return clean structured reply
+        return {
+            "reply": reply_text + "\n\nWould you like me to summarize these results for you?",
+            "sql": sql_query,
+            "rows": rows[:5],
+            "total_rows": total_rows,
+            "can_summarize": True
+        }
+
+    except Exception as e:
+        logger.error(f"Chat error: {e}")
+        return {"reply": f"Unexpected error: {str(e)}"}
+
+@app.post("/chat/summary")
+def chat_generate_summary(req: dict):
+    """Generate a friendly natural summary of the last query results."""
+    try:
+        question = req.get("question", "")
+        sql_query = req.get("sql", "")
+        results = req.get("rows", [])
+
+        summary = summarization_service.generate_summary(
+            question=question,
+            results=results,
+            sql_query=sql_query
+        )
+
+        # ✅ Handle both dict and object return types
+        if isinstance(summary, dict):
+            return {
+                "reply": f"Summary:\n{summary.get('summary', 'No summary available.')}",
+                "insights": summary.get("insights", []),
+                "row_count": summary.get("row_count", len(results))
+            }
+        else:
+            # backward-compatible with object form
+            return {
+                "reply": f"Summary:\n{getattr(summary, 'summary', 'No summary available.')}",
+                "insights": getattr(summary, 'insights', []),
+                "row_count": getattr(summary, 'row_count', len(results))
+            }
+
+    except Exception as e:
+        return {"reply": f"Failed to summarize: {str(e)}"}
+
+
+# -------------------------------------------------
+# App Runner
 # -------------------------------------------------
 if __name__ == "__main__":
     import uvicorn

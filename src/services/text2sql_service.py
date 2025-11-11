@@ -121,17 +121,20 @@ class EnhancedText2SQLService:
 
         for table in tables:
             table_name = table[0]
-            cursor.execute(f"PRAGMA table_info({table_name})")
-            columns = cursor.fetchall()
-            schema_info[table_name] = [
-                {
-                    "name": col[1],
-                    "type": col[2],
-                    "nullable": not col[3],
-                    "primary_key": col[5] == 1
-                }
-                for col in columns
-            ]
+            try:
+                cursor.execute(f'PRAGMA table_info("{table_name}")')
+                columns = cursor.fetchall()
+                schema_info[table_name] = [
+                    {
+                        "name": col[1],
+                        "type": col[2],
+                        "nullable": not col[3],
+                        "primary_key": col[5] == 1
+                    }
+                    for col in columns
+                ]
+            except Exception as e:
+                self.logger.warning(f"Skipping table {table_name}: {e}")
         return schema_info
 
     def create_schema_context(self, schema_info: Dict, user_query: str) -> str:
@@ -149,7 +152,7 @@ class EnhancedText2SQLService:
             relevant_tables = list(schema_info.keys())
 
         schema_context = "Database Schema:\n"
-        for table in relevant_tables[:3]:
+        for table in relevant_tables[:5]:
             schema_context += f"Table: {table}\n"
             for col in schema_info[table]:
                 schema_context += f"  - {col['name']} ({col['type']})\n"
@@ -167,8 +170,11 @@ class EnhancedText2SQLService:
 - Use only tables and columns mentioned in the schema
 - Use proper SQLite syntax
 - Use JOINs when needed
+- Use ORDER BY and LIMIT 1 for "top", "highest", "best", or "first" queries.
+- For questions like "number of orders per customer", use COUNT() with GROUP BY and JOIN.
 - Use WHERE for filtering
 - Use GROUP BY and aggregates when needed
+- Use GROUP BY and aggregates (COUNT, SUM, AVG, MAX, MIN) only when explicitly requested.
 - Return only the SQL query without any explanations
 
 ### Question: {question}
