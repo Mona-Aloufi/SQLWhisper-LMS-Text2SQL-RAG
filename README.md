@@ -1,74 +1,68 @@
-# 👂 SQLWhisper: Context-Aware Text-to-SQL Engine for LMS Data
-
----
+# 👂 SQLWhisper: Context-Aware Text-to-SQL Engine
 
 ## 🚦 Status & License
-
 | Status | License | Deployment |
-| :---: | :---: | :---: |
-| [![Status](https://img.shields.io/badge/Status-In%20Development-yellow)](link_to_project_status) | [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) | [![Hugging Face](https://img.shields.io/badge/Model-Hugging%20Face-FFD21E?logo=huggingface&logoColor=000)](your_huggingface_model_link) |
+|--------|---------|------------|
+| Active | MIT     | Hugging Face |
 
 ---
 
-## 🎯 Problem & Solution (Project Overview)
+## 🎯 Overview
 
-### The Problem
+**The Problem**  
+Many users need to query databases quickly using natural language, but not everyone knows SQL. Writing complex queries manually is slow and error-prone, limiting efficient data exploration and decision-making.
 
-**School administrators** and **instructors** frequently need quick, complex data insights like "Which students in the Algebra class have submitted fewer than two assignments in the last week?" but they often lack the technical **SQL skills** to query the Learning Management System (LMS) database directly. This bottleneck slows down decision-making and immediate intervention.
-
-### The Solution
-
-**SQLWhisper** is a sophisticated, context-aware **Text-to-SQL engine** designed to bridge this gap. It converts complex natural language queries into accurate, efficient, and **privacy-preserving SQL** queries tailored for your LMS database. It achieves this by combining a **Finetuned Text2SQL model** with a **Retrieval-Augmented Generation (RAG)** system to ensure queries are contextually accurate to the specific database schema.
+**The Solution**  
+SQLWhisper is a context-aware Text-to-SQL engine that converts natural language queries into accurate SQL statements. It provides a **confidence score** for each generated query and includes a **feedback loop** for continuous improvement.
 
 ---
 
 ## 🏗️ Architecture
 
-The SQLWhisper system is built upon four core, interconnected components that ensure accuracy, scalability, and continuous improvement.
+SQLWhisper consists of four main components designed for accuracy, scalability, and learning:
 
-[Link to your SQLWhisper Architecture Diagram: *Insert Diagram Link Here*]
+1. **Data Curation**  
+   Generates and structures (NL, SQL) pairs using generic example databases for testing and evaluation.
 
-1.  **Data Curation:** This initial phase involves generating, anonymizing, and structuring the **(NL, SQL) paired datasets** for finetuning, using your actual LMS schema and limited, safe student data.
-2.  **Finetuning:** A base Large Language Model (LLM) is **finetuned** specifically on the generated Text2SQL dataset. This specializes the model to the jargon and structure of your LMS data. The resulting model will be deployed on the **Hugging Face Hub**.
-3.  **RAG System (Schema Retrieval):** Before generation, the RAG system intelligently retrieves the most relevant **database schema snippets** (e.g., table names, column descriptions) to augment the prompt. This ensures the generated SQL is valid and contextually accurate for the specific query.
-4.  **Governance/Learning Loop:** This critical component handles **privacy (PII filtering, sandbox environment execution)** and features a feedback mechanism. It logs failed or inaccurate queries for human review, creating new training examples for **continuous model improvement** and maintenance.
+2. **RAG System (Schema Retrieval)**  
+   Retrieves the most relevant database schema snippets (tables, columns) to augment the model input, improving SQL accuracy and reducing hallucinations.
+
+3. **Query Generation & Confidence Scoring**  
+   Converts natural language queries into SQL and assigns a confidence score to indicate reliability.
+
+4. **Feedback & Learning Loop**  
+   Logs inaccurate or low-confidence queries for review, generating new examples for continuous improvement.
 
 ---
 
 ## ✨ Key Features
 
-* **Finetuned Text2SQL Generation:** Highly specialized model optimized for the unique structure and common queries of an LMS environment.
-* **Schema-Retrieval Augmented Generation (RAG):** Uses a RAG system to dynamically inject relevant database schema into the prompt, drastically reducing hallucination and improving SQL accuracy.
-* **Privacy-Preserving Execution:**
-    * **PII Filtering:** Sanitizes all input queries to prevent the direct use of personally identifiable information.
-    * **Sandbox Environment:** All generated SQL is executed within a secure, read-only sandbox to prevent data modification and ensure safety before the results are returned.
-* **Learning Loop for Continuous Improvement:** A systematic feedback and retraining loop ensures the model's performance constantly improves as new, complex, or failed queries are encountered and corrected.
+- **Text-to-SQL Generation**: Converts natural language queries into executable SQL.  
+- **Schema-Retrieval Augmented Generation (RAG)**: Dynamically injects relevant database schema into prompts for more accurate queries.  
+- **Confidence Scoring**: Each SQL output includes a reliability score.  
+- **Feedback Loop**: Low-confidence or failed queries are logged for model refinement.  
+- **Privacy & Safety**: Queries can be executed in a sandboxed, read-only environment to prevent accidental data changes.
 
 ---
 
 ## 🧑‍💻 Use Cases
 
-SQLWhisper is designed to significantly boost data accessibility for non-technical users, but the underlying Text-to-SQL technology is broadly applicable.
-
-* **Helping School Admins:** Quickly query high-level student information, enrollment trends, or teacher workload data (e.g., "Show me the count of unique students enrolled across all history courses this semester").
-* **Helping Instructors:** Instantly access specific student learning data and performance metrics (e.g., "Find all students in my Physics 101 class who have a submission grade below 70% on the last quiz").
-* **Generalizability:** The core Text2SQL engine can be readily adapted to many other organizational data use cases beyond the LMS.
+- Query large databases without SQL expertise.  
+- Validate and refine queries using confidence scores.  
+- Continuous model improvement via feedback loop.  
+- Adaptable to any organizational or analytical database scenario.
 
 ---
 
-## ⚙️ Setup and Run 🚀
+## ⚙️ Setup and Run
 
-These instructions will guide you through setting up the environment and running the core pipelines.
+**Prerequisites**  
+- Python 3.9+  
+- pip package installer  
+- Access to the database schema (for RAG)  
+- Access to a sandbox database (for testing)
 
-### Prerequisites
-
-* Python 3.9+
-* `pip` package installer
-* Access to the **LMS Database Schema** (for RAG and Data Curation)
-* Access to the **Sandbox Database** (for testing and inference)
-
-### 1. Environment Setup
-
+**Environment Setup**  
 ```bash
 # Clone the repository
 git clone [repository_link]
@@ -76,4 +70,3 @@ cd SQLWhisper
 
 # Install required packages
 pip install -r requirements.txt
-
