@@ -10,47 +10,46 @@
 ## 🎯 Overview
 
 **The Problem**  
-Many users need to query databases quickly using natural language, but not everyone knows SQL. Writing complex queries manually is slow and error-prone, limiting efficient data exploration and decision-making.
+Many users need to query databases quickly using natural language, but not everyone knows SQL. Writing complex queries manually is slow and prone to errors, limiting efficient data exploration and decision-making.
 
 **The Solution**  
-SQLWhisper is a context-aware Text-to-SQL engine that converts natural language queries into accurate SQL statements. It provides a **confidence score** for each generated query and includes a **feedback loop** for continuous improvement.
+SQLWhisper is a context-aware Text-to-SQL engine that converts natural language queries into accurate SQL statements. It provides a **confidence score** for each query and incorporates a **feedback loop** to continuously improve performance.
 
 ---
 
 ## 🏗️ Architecture
 
-SQLWhisper consists of four main components designed for accuracy, scalability, and learning:
+SQLWhisper consists of four main components, designed for accuracy, scalability, and continuous learning:
 
 1. **Data Curation**  
-   Generates and structures (NL, SQL) pairs using generic example databases for testing and evaluation.
+   Generates and organizes (NL, SQL) pairs using generic example databases for testing and evaluation.
 
 2. **RAG System (Schema Retrieval)**  
-   Retrieves the most relevant database schema snippets (tables, columns) to augment the model input, improving SQL accuracy and reducing hallucinations.
+   Retrieves the most relevant database schema snippets (tables, columns) to enhance the model’s context, improving SQL accuracy and reducing errors.
 
 3. **Query Generation & Confidence Scoring**  
-   Converts natural language queries into SQL and assigns a confidence score to indicate reliability.
+   Transforms natural language queries into SQL and assigns a confidence score to indicate reliability.
 
 4. **Feedback & Learning Loop**  
-   Logs inaccurate or low-confidence queries for review, generating new examples for continuous improvement.
+   Logs low-confidence or inaccurate queries for review, creating new examples to continuously refine the model.
 
 ---
 
 ## ✨ Key Features
 
 - **Text-to-SQL Generation**: Converts natural language queries into executable SQL.  
-- **Schema-Retrieval Augmented Generation (RAG)**: Dynamically injects relevant database schema into prompts for more accurate queries.  
-- **Confidence Scoring**: Each SQL output includes a reliability score.  
-- **Feedback Loop**: Low-confidence or failed queries are logged for model refinement.  
-- **Privacy & Safety**: Queries can be executed in a sandboxed, read-only environment to prevent accidental data changes.
+- **Schema-Retrieval Augmented Generation (RAG)**: Dynamically adds relevant database schema to prompts for more accurate queries.  
+- **Confidence Scoring**: Each generated SQL query includes a reliability score.  
+- **Feedback Loop**: Low-confidence or failed queries are logged for continuous improvement.  
 
 ---
 
 ## 🧑‍💻 Use Cases
 
 - Query large databases without SQL expertise.  
-- Validate and refine queries using confidence scores.  
-- Continuous model improvement via feedback loop.  
-- Adaptable to any organizational or analytical database scenario.
+- Assess query reliability using confidence scores.  
+- Continuously refine model performance through feedback loops.  
+- Flexible for any analytical or organizational database scenario.
 
 ---
 
