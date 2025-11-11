@@ -397,20 +397,21 @@ def get_sample_queries(database_path: str = "data/my_database.sqlite"):
         }
 
 
-@app.post("/generate-summary", response_model=SummaryResponse)
+@app.post("/generate-summary")
 def generate_summary(payload: SummaryRequest):
-    """Generate simple English summary of query results."""
+    """Return only the summary text as a plain string."""
     try:
         summary_result = summarization_service.generate_summary(
             question=payload.question,
             results=payload.results,
             sql_query=payload.sql_query
         )
-        return summary_result
+        return {"summary": summary_result["summary"]}
         
     except Exception as e:
         logger.error(f"Summary generation error: {e}")
         raise HTTPException(status_code=500, detail=f"Summary generation failed: {str(e)}")
+    
 
 @app.post("/quick-insights")
 def get_quick_insights(payload: SummaryRequest):
