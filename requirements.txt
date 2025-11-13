@@ -1,36 +1,18 @@
-# Core ML & NLP
-transformers>=4.35.0
-torch>=2.0.0
+# Database Connectivity
+sqlite3>=0.1.0
+psycopg2-binary>=2.9.7
+PyMySQL>=1.1.0
+
+# Data Handling & Utilities
+pandas>=2.2.0
+pyyaml>=6.0
+
+# Testing & Development
+pytest>=7.4.0
+
+# For Text2SQL model integration
+torch>=2.3.0
+transformers>=4.38.0
 sentencepiece>=0.1.99
-protobuf>=3.20.0
-datasets
-accelerate>=0.24.0
-peft
-trl
-bitsandbytes
 
-# FastAPI backend
-fastapi
-uvicorn
-
-# Streamlit frontend
-streamlit
-streamlit-aggrid
-
-# RAG / LangChain components
-langchain
-faiss-cpu
-huggingface_hub
-python-dotenv>=1.0.0
-
-# Database connectivity (for LMS schema or logging)
-sqlalchemy
-psycopg2-binary
-
-# Data processing
-pandas
-numpy
-tqdm
-
-# Utility & I/O
-requests
+streamlit>=1.30.0

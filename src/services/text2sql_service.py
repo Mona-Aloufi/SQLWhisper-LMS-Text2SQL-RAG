@@ -1,285 +1,167 @@
-# ============================================================
-# Text-to-SQL Service — Enhanced with Token-Level Confidence
-# ============================================================
-import os
-import re
+# src/services/text2sql_service.py
 import logging
-import sqlite3
-from typing import Dict, List, Any
-import torch
-import torch.nn.functional as F
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
-
+from typing import Dict, Any
+from .model_handler import ModelHandler
+from .prompt_builder import PromptBuilder
+from .sql_validator import SQLValidator
+from .query_executor import QueryExecutor
+from .confidence_analyzer import ConfidenceAnalyzer
 
 class EnhancedText2SQLService:
     def __init__(self, model_name=None, device=None):
         """
-        Enhanced Text2SQL service with Hugging Face token support.
-        Using yasserrmd/Text2SQL-1.5B model (Causal LM)
+        Enhanced Text2SQL service with modular architecture.
+        Integrates with the database system we built.
         """
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.model_name = model_name or os.getenv("MODEL_NAME", "yasserrmd/Text2SQL-1.5B")
-        self.hf_token = os.getenv("HF_TOKEN")
-
         self.logger = logging.getLogger(__name__)
-        self.logger.info(f"Initializing Text2SQL service with model: {self.model_name}")
-
+        
+        # Initialize all components
+        self.model_handler = ModelHandler(model_name, device)
+        self.prompt_builder = PromptBuilder()
+        self.sql_validator = SQLValidator()
+        self.query_executor = QueryExecutor()
+        self.confidence_analyzer = ConfidenceAnalyzer()
+        
+        self.logger.info("✅ EnhancedText2SQLService initialized with all components")
+    
+    def generate_sql(self, question: str, db_connection, max_retries: int = 2) -> Dict[str, Any]:
+        """Generate SQL from natural language question."""
         try:
-            # Initialize tokenizer and model with Hugging Face token
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name,
-                token=self.hf_token,
-                trust_remote_code=True
+            # Extract schema from database connection
+            schema_info = self._extract_schema_from_connection(db_connection)
+            
+            # Build schema context
+            schema_context = self.prompt_builder.build_schema_context(schema_info, question)
+            
+            # Build enhanced prompt
+            prompt = self.prompt_builder.build_enhanced_prompt(question, schema_context)
+            
+            # Generate SQL with model
+            generation_result = self.model_handler.generate_with_confidence(prompt)
+            
+            if generation_result.get('error'):
+                return {
+                    'sql': '',
+                    'valid': False,
+                    'error': generation_result['error'],
+                    'confidence': 0.0,
+                    'confidence_label': 'Error'
+                }
+            
+            # Extract SQL from response
+            raw_sql = generation_result['generated_text']
+            extracted_sql = self.prompt_builder.extract_sql_from_response(raw_sql)
+            
+            # Validate and clean SQL
+            validation_result = self.sql_validator.validate_and_clean(extracted_sql, db_connection)
+            
+            # Analyze confidence
+            confidence_data = self.confidence_analyzer.calculate_token_confidence(
+                generation_result.get('confidences', [])
             )
-
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                token=self.hf_token,
-                trust_remote_code=True,
-                dtype=torch.float16 if torch.cuda.is_available() else torch.float32
-            ).to(self.device)
-
-            self.logger.info("✅ Model loaded successfully")
-
-        except Exception as e:
-            self.logger.error(f"Failed to load model: {e}")
-            self._load_fallback_model()
-
-    # ============================================================
-    # Token-Level Confidence — Logit-Based Certainty
-    # ============================================================
-    def _token_confidence(self, inputs):
-        """Compute average token-level confidence from softmax probabilities."""
-        try:
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    **inputs,
-                    max_new_tokens=256,
-                    num_return_sequences=1,
-                    temperature=0.1,
-                    do_sample=False,
-                    pad_token_id=self.tokenizer.eos_token_id,
-                    eos_token_id=self.tokenizer.eos_token_id,
-                    early_stopping=True,
-                    output_scores=True,
-                    return_dict_in_generate=True,
-                )
-
-            confidences = [
-                F.softmax(score, dim=-1).max().item()
-                for score in outputs.scores
-            ]
-            avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
-            self.logger.info(f"Token confidence: {round(avg_conf * 100, 2)}%")
-            return round(avg_conf, 3)
-
-        except Exception as e:
-            self.logger.warning(f"Token-level confidence computation failed: {e}")
-            return None
-
-    def interpret_confidence(self, score: float) -> str:
-        """Return human-readable label for confidence score."""
-        if score is None:
-            return "Unknown"
-        if score >= 0.85:
-            return "High"
-        elif score >= 0.65:
-            return "Medium"
-        else:
-            return "Low"
-
-    # ============================================================
-    # Fallback Model
-    # ============================================================
-    def _load_fallback_model(self):
-        """Load fallback model if the primary model fails."""
-        try:
-            self.logger.info("Trying fallback model: google/flan-t5-base")
-            self.model_name = "google/flan-t5-base"
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-            from transformers import AutoModelForSeq2SeqLM
-            self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name).to(self.device)
-            self.logger.info("Fallback model loaded successfully")
-        except Exception as e:
-            self.logger.error(f"Fallback model also failed: {e}")
-            raise e
-
-    # ============================================================
-    # Schema & Prompt Utilities
-    # ============================================================
-    def get_database_schema(self, db_connection) -> Dict:
-        """Extract complete schema information from SQLite database."""
-        schema_info = {}
-        cursor = db_connection.cursor()
-
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = cursor.fetchall()
-
-        for table in tables:
-            table_name = table[0]
-            try:
-                cursor.execute(f'PRAGMA table_info("{table_name}")')
-                columns = cursor.fetchall()
-                schema_info[table_name] = [
-                    {
-                        "name": col[1],
-                        "type": col[2],
-                        "nullable": not col[3],
-                        "primary_key": col[5] == 1
-                    }
-                    for col in columns
-                ]
-            except Exception as e:
-                self.logger.warning(f"Skipping table {table_name}: {e}")
-        return schema_info
-
-    def create_schema_context(self, schema_info: Dict, user_query: str) -> str:
-        """Create intelligent schema context based on query."""
-        relevant_tables = []
-        query_lower = user_query.lower()
-
-        for table_name, columns in schema_info.items():
-            table_in_query = table_name.lower() in query_lower
-            columns_in_query = any(col['name'].lower() in query_lower for col in columns)
-            if table_in_query or columns_in_query:
-                relevant_tables.append(table_name)
-
-        if not relevant_tables:
-            relevant_tables = list(schema_info.keys())
-
-        schema_context = "Database Schema:\n"
-        for table in relevant_tables[:5]:
-            schema_context += f"Table: {table}\n"
-            for col in schema_info[table]:
-                schema_context += f"  - {col['name']} ({col['type']})\n"
-            schema_context += "\n"
-        return schema_context
-
-    def create_enhanced_prompt(self, question: str, schema_context: str) -> str:
-        """Create a structured prompt for causal LM models."""
-        return f"""### Task: Convert the following natural language question into a SQLite SQL query.
-
-### Database Schema:
-{schema_context}
-
-### Instructions:
-- Use only tables and columns mentioned in the schema
-- Use proper SQLite syntax
-- Use JOINs when needed
-- Use ORDER BY and LIMIT 1 for "top", "highest", "best", or "first" queries.
-- For questions like "number of orders per customer", use COUNT() with GROUP BY and JOIN.
-- Use WHERE for filtering
-- Use GROUP BY and aggregates when needed
-- Use GROUP BY and aggregates (COUNT, SUM, AVG, MAX, MIN) only when explicitly requested.
-- Return only the SQL query without any explanations
-
-### Question: {question}
-
-### SQL Query:
-```sql
-"""
-
-    # ============================================================
-    # SQL Cleaning, Validation, and Generation
-    # ============================================================
-    def clean_sql_output(self, sql: str) -> str:
-        """Clean and validate SQL output."""
-        sql = re.sub(r'```sql\s*', '', sql)
-        sql = re.sub(r'```\s*', '', sql)
-        sql_match = re.search(r'(SELECT|INSERT|UPDATE|DELETE|WITH).*?(?=```|$)', sql, re.IGNORECASE | re.DOTALL)
-        if sql_match:
-            sql = sql_match.group(0).strip()
-        sql = re.sub(r'[\s\n]*$', '', sql)
-        if not sql.endswith(';'):
-            sql += ';'
-        return sql
-
-    def validate_sql_syntax(self, sql: str, db_connection) -> bool:
-        """Perform basic SQL syntax validation."""
-        try:
-            cursor = db_connection.cursor()
-            cursor.execute(f"EXPLAIN {sql}")
-            return True
-        except Exception as e:
-            self.logger.warning(f"SQL syntax validation failed: {e}")
-            return False
-
-    def generate_sql(self, question: str, db_connection, max_retries: int = 2) -> Dict:
-        """Generate SQL query from natural language with confidence scoring."""
-        try:
-            schema_info = self.get_database_schema(db_connection)
-            schema_context = self.create_schema_context(schema_info, question)
-            prompt = self.create_enhanced_prompt(question, schema_context)
-
-            inputs = self.tokenizer(prompt, return_tensors="pt", max_length=1024, truncation=True).to(self.device)
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=256,
-                num_return_sequences=1,
-                temperature=0.1,
-                do_sample=False,
-                pad_token_id=self.tokenizer.eos_token_id,
-                eos_token_id=self.tokenizer.eos_token_id,
-                early_stopping=True,
-                output_scores=True,
-                return_dict_in_generate=True
+            
+            # Analyze generation quality
+            quality_analysis = self.confidence_analyzer.analyze_generation_quality(
+                raw_sql, 
+                confidence_data['avg_confidence']
             )
-
-            raw_sql = self.tokenizer.decode(outputs.sequences[0], skip_special_tokens=True)
-            raw_sql = raw_sql.replace(prompt, "").strip()
-            cleaned_sql = self.clean_sql_output(raw_sql)
-
-            # Token-level confidence computation
-            token_conf = None
-            try:
-                confidences = [F.softmax(score, dim=-1).max().item() for score in outputs.scores]
-                token_conf = sum(confidences) / len(confidences) if confidences else 0.0
-                self.logger.info(f"Token confidence: {round(token_conf * 100, 2)}%")
-            except Exception as e:
-                self.logger.warning(f"Token confidence error: {e}")
-
-            is_valid = self.validate_sql_syntax(cleaned_sql, db_connection)
-
+            
             return {
-                "sql": cleaned_sql,
-                "valid": is_valid,
-                "raw_output": raw_sql,
-                "schema_used": schema_context,
-                "confidence": round(token_conf * 100, 2) if token_conf is not None else None,
-                "confidence_label": self.interpret_confidence(token_conf)
+                'sql': validation_result['cleaned_sql'],
+                'valid': validation_result['is_valid'],
+                'is_safe': validation_result['is_safe'],
+                'raw_output': raw_sql,
+                'schema_used': schema_context,
+                'confidence': confidence_data['avg_confidence'],
+                'confidence_label': confidence_data['confidence_label'],
+                'confidence_details': confidence_data,
+                'quality_analysis': quality_analysis,
+                'validation_result': validation_result,
+                'model_info': self.model_handler.get_model_info()
             }
-
+            
         except Exception as e:
             self.logger.error(f"Error generating SQL: {e}")
             return {
-                "sql": "SELECT 1;",
-                "valid": False,
-                "error": str(e),
-                "raw_output": ""
+                'sql': '',
+                'valid': False,
+                'error': str(e),
+                'raw_output': '',
+                'confidence': 0.0,
+                'confidence_label': 'Error'
             }
-
-    # ============================================================
-    # SQL Execution Utility
-    # ============================================================
+    
     def execute_sql(self, db_connection, sql: str) -> Dict[str, Any]:
-        """Execute SQL query and return results."""
+        """Execute SQL query using the query executor."""
+        return self.query_executor.execute_query(db_connection, sql)
+    
+    def _extract_schema_from_connection(self, db_connection) -> Dict[str, Any]:
+        """Extract schema information from database connection."""
         try:
             cursor = db_connection.cursor()
-            cursor.execute(sql)
-            rows = cursor.fetchall()
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
-            db_connection.commit()
-
-            return {
-                "success": True,
-                "columns": columns,
-                "rows": rows,
-                "row_count": len(rows)
-            }
+            
+            # Get all tables
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = cursor.fetchall()
+            
+            schema_info = {}
+            
+            for table in tables:
+                table_name = table[0]
+                try:
+                    # Get table columns
+                    cursor.execute(f'PRAGMA table_info("{table_name}")')
+                    columns = cursor.fetchall()
+                    
+                    schema_info[table_name] = {
+                        'columns': [
+                            {
+                                'name': col[1],
+                                'type': col[2],
+                                'nullable': not col[3],
+                                'primary_key': bool(col[5])
+                            }
+                            for col in columns
+                        ]
+                    }
+                    
+                    # Get foreign keys
+                    cursor.execute(f'PRAGMA foreign_key_list("{table_name}")')
+                    foreign_keys = cursor.fetchall()
+                    
+                    schema_info[table_name]['foreign_keys'] = [
+                        f"{fk[3]} -> {fk[2]}.{fk[4]}"  # from_col -> to_table.to_col
+                        for fk in foreign_keys
+                    ]
+                    
+                except Exception as e:
+                    self.logger.warning(f"Skipping table {table_name}: {e}")
+                    continue
+            
+            return schema_info
+            
         except Exception as e:
-            self.logger.error(f"SQL Execution Error: {e}")
-            return {"success": False, "error": str(e)}
+            self.logger.error(f"Error extracting schema: {e}")
+            return {}
+    
+    def get_table_info(self, db_connection, table_name: str) -> Dict[str, Any]:
+        """Get information about a specific table."""
+        return self.query_executor.get_table_info(db_connection, table_name)
+    
+    def test_connection(self, db_connection) -> bool:
+        """Test database connection."""
+        return self.query_executor.test_connection(db_connection)
+    
+    def get_service_info(self) -> Dict[str, Any]:
+        """Get service information."""
+        return {
+            'model_info': self.model_handler.get_model_info(),
+            'service_status': 'active',
+            'components': {
+                'model_handler': True,
+                'prompt_builder': True,
+                'sql_validator': True,
+                'query_executor': True,
+                'confidence_analyzer': True
+            }
+        }
