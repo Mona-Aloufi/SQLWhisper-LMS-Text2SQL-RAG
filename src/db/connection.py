@@ -5,7 +5,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 class DatabaseConnection:
     """
     Lightweight multi-DB connection wrapper.
@@ -22,15 +21,9 @@ class DatabaseConnection:
         try:
             if self.db_type == "sqlite":
                 path = self.db_config["path"]
-                # sqlite3 will create file if it doesn't exist — ensure path exists
                 self.connection = sqlite3.connect(path, check_same_thread=False)
             elif self.db_type == "postgresql":
-                try:
-                    import psycopg2
-                except ImportError:
-                    raise ImportError(
-                        "psycopg2 is required for PostgreSQL connections. Install with: pip install psycopg2-binary"
-                    )
+                import psycopg2
                 self.connection = psycopg2.connect(
                     host=self.db_config["host"],
                     port=self.db_config.get("port", 5432),
@@ -39,12 +32,7 @@ class DatabaseConnection:
                     password=self.db_config["password"],
                 )
             elif self.db_type == "mysql":
-                try:
-                    import pymysql
-                except ImportError:
-                    raise ImportError(
-                        "PyMySQL is required for MySQL connections. Install with: pip install PyMySQL"
-                    )
+                import pymysql
                 self.connection = pymysql.connect(
                     host=self.db_config["host"],
                     port=self.db_config.get("port", 3306),
@@ -75,7 +63,6 @@ class DatabaseConnection:
     def get_cursor(self):
         """
         Yield a cursor. Commits on success, rollbacks on exception.
-        Note: psycopg2 cursors can be dict cursors if you prefer; adjust if needed.
         """
         if not self.connection:
             if not self.connect():
@@ -84,11 +71,9 @@ class DatabaseConnection:
         cursor = self.connection.cursor()
         try:
             yield cursor
-            # commit if connection supports it
             try:
                 self.connection.commit()
             except Exception:
-                # some connections auto-commit, ignore commit errors here
                 pass
         except Exception as e:
             try:
@@ -102,12 +87,18 @@ class DatabaseConnection:
             except Exception:
                 pass
 
+    # Allow SchemaExtractor and other code to call .cursor()
+    def cursor(self):
+        if not self.connection:
+            if not self.connect():
+                raise Exception("Cannot establish DB connection")
+        return self.connection.cursor()
+
     def test_connection(self) -> bool:
         """Simple test query."""
         try:
             with self.get_cursor() as cur:
                 cur.execute("SELECT 1")
-                # some DB drivers require fetch
                 _ = cur.fetchone()
             return True
         except Exception as e:

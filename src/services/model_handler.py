@@ -8,44 +8,64 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class ModelHandler:
+    _model_cache = {}  # ✅ Cache models by name
+
     def __init__(self, model_name=None, device=None):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.model_name = model_name or os.getenv("MODEL_NAME", "yasserrmd/Text2SQL-1.5B")
         self.hf_token = os.getenv("HF_TOKEN")
         self.logger = logging.getLogger(__name__)
-        
+
         self.tokenizer = None
         self.model = None
+
+        self._load_model_with_cache()
+
+    def _load_model_with_cache(self):
+        """Load model from cache if available."""
+        if self.model_name in ModelHandler._model_cache:
+            self.logger.info(f"✅ Using cached model: {self.model_name}")
+            cache_entry = ModelHandler._model_cache[self.model_name]
+            self.tokenizer = cache_entry['tokenizer']
+            self.model = cache_entry['model']
+            return
+
+        self.logger.info(f"🚀 Loading model into cache: {self.model_name}")
         self._load_model()
-    
+
+        # Store in cache
+        ModelHandler._model_cache[self.model_name] = {
+            'tokenizer': self.tokenizer,
+            'model': self.model
+        }
+        self.logger.info(f"✅ Model cached successfully: {self.model_name}")
+
     def _load_model(self):
         """Load the primary model with fallback."""
         try:
-            self.logger.info(f"Loading model: {self.model_name}")
-            
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
                 token=self.hf_token,
                 trust_remote_code=True
             )
-            
+
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 token=self.hf_token,
                 trust_remote_code=True,
                 torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
             ).to(self.device)
-            
+
             self.logger.info("✅ Model loaded successfully")
-            
+
         except Exception as e:
             self.logger.error(f"Failed to load primary model: {e}")
             self._load_fallback_model()
-    
+
     def _load_fallback_model(self):
         """Load fallback model if primary fails."""
         try:
-            self.logger.info("Loading fallback model: google/flan-t5-base")
+            self.logger.info("⚙️ Loading fallback model: google/flan-t5-base")
             self.model_name = "google/flan-t5-base"
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name).to(self.device)
@@ -53,17 +73,17 @@ class ModelHandler:
         except Exception as e:
             self.logger.error(f"Fallback model failed: {e}")
             raise e
-    
+
     def generate_with_confidence(self, prompt: str, max_new_tokens: int = 256):
         """Generate text with confidence scoring."""
         try:
             inputs = self.tokenizer(
-                prompt, 
-                return_tensors="pt", 
-                max_length=1024, 
+                prompt,
+                return_tensors="pt",
+                max_length=1024,
                 truncation=True
             ).to(self.device)
-            
+
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
@@ -76,29 +96,27 @@ class ModelHandler:
                 output_scores=True,
                 return_dict_in_generate=True
             )
-            
-            # Calculate token-level confidence
+
             confidences = []
             if hasattr(outputs, 'scores') and outputs.scores:
                 for score in outputs.scores:
                     conf = torch.softmax(score, dim=-1).max().item()
                     confidences.append(conf)
-            
+
             avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
-            
-            # Decode the generated text
+
             generated_text = self.tokenizer.decode(
-                outputs.sequences[0], 
+                outputs.sequences[0],
                 skip_special_tokens=True
             )
-            
+
             return {
                 'generated_text': generated_text,
                 'confidence': avg_confidence,
                 'confidences': confidences,
                 'tokens_generated': len(outputs.sequences[0]) - inputs['input_ids'].shape[1]
             }
-            
+
         except Exception as e:
             self.logger.error(f"Generation error: {e}")
             return {
@@ -107,12 +125,13 @@ class ModelHandler:
                 'confidences': [],
                 'error': str(e)
             }
-    
+
     def get_model_info(self):
         """Get model information."""
         return {
             'model_name': self.model_name,
             'device': str(self.device),
             'tokenizer_type': type(self.tokenizer).__name__,
-            'model_type': type(self.model).__name__
+            'model_type': type(self.model).__name__,
+            'cached_models': list(ModelHandler._model_cache.keys())
         }
