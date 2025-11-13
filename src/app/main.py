@@ -19,9 +19,6 @@ schema_extractor: SchemaExtractor = SchemaExtractor(db_connection=None)
 text2sql_service = EnhancedText2SQLService()
 
 
-# ------------------------------------------------------
-# 1️⃣ Upload SQLite Database File
-# ------------------------------------------------------
 @app.post("/upload-db")
 async def upload_sqlite(file: UploadFile):
     try:
@@ -44,9 +41,7 @@ async def upload_sqlite(file: UploadFile):
         return {"error": str(e)}
 
 
-# ------------------------------------------------------
-# 2️⃣ Connect to External Database
-# ------------------------------------------------------
+
 @app.post("/connect-db")
 async def connect_external_db(payload: dict = Body(...)):
     try:
@@ -80,9 +75,7 @@ async def connect_external_db(payload: dict = Body(...)):
         return {"error": str(e)}
 
 
-# ------------------------------------------------------
-# 3️⃣ Generate SQL Query
-# ------------------------------------------------------
+
 @app.post("/generate-sql")
 async def generate_sql(payload: dict = Body(...)):
     try:
@@ -102,9 +95,7 @@ async def generate_sql(payload: dict = Body(...)):
         return {"error": str(e)}
 
 
-# ------------------------------------------------------
-# 4️⃣ Execute SQL Query
-# ------------------------------------------------------
+
 @app.post("/execute-sql")
 async def execute_sql(payload: dict = Body(...)):
     try:
