@@ -24,17 +24,31 @@ class EnhancedText2SQLService:
         
         self.logger.info("✅ EnhancedText2SQLService initialized with all components")
     
-    def generate_sql(self, question: str, db_connection, max_retries: int = 2) -> Dict[str, Any]:
+    def generate_sql(self, question: str, db_connection, max_retries: int = 2, db_type: str = None) -> Dict[str, Any]:
         """Generate SQL from natural language question."""
         try:
+            # Determine database type
+            if db_type is None:
+                # Default to sqlite if not provided
+                # The db_type should be passed from the API layer
+                db_type = 'sqlite'
+            
+            # Capitalize for prompt (SQLite, PostgreSQL, MySQL)
+            db_type_map = {
+                'sqlite': 'SQLite',
+                'postgresql': 'PostgreSQL',
+                'mysql': 'MySQL'
+            }
+            db_type_capitalized = db_type_map.get(db_type.lower(), 'SQLite')
+            
             # Extract schema from database connection
             schema_info = self._extract_schema_from_connection(db_connection)
             
             # Build schema context
             schema_context = self.prompt_builder.build_schema_context(schema_info, question)
             
-            # Build enhanced prompt
-            prompt = self.prompt_builder.build_enhanced_prompt(question, schema_context)
+            # Build enhanced prompt with db_type
+            prompt = self.prompt_builder.build_enhanced_prompt(question, schema_context, db_type=db_type_capitalized)
             
             # Generate SQL with model
             generation_result = self.model_handler.generate_with_confidence(prompt)

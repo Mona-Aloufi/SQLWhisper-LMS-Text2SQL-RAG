@@ -8,8 +8,13 @@ class ConfidenceAnalyzer:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
     
-    def calculate_token_confidence(self, scores: List[torch.Tensor]) -> Dict[str, Any]:
-        """Calculate confidence from model output scores."""
+    def calculate_token_confidence(self, scores: List[Any]) -> Dict[str, Any]:
+        """Calculate confidence from model output scores.
+        
+        Accepts either:
+        - List of torch.Tensor (raw scores) - will apply softmax
+        - List of float (already computed confidences) - will use directly
+        """
         if not scores:
             return {
                 'avg_confidence': 0.0,
@@ -22,10 +27,31 @@ class ConfidenceAnalyzer:
         try:
             confidences = []
             for score in scores:
-                # Apply softmax and get max probability
-                probs = F.softmax(score, dim=-1)
-                max_prob = probs.max().item()
-                confidences.append(max_prob)
+                # Check if it's already a float (computed confidence)
+                if isinstance(score, (float, int)):
+                    confidences.append(float(score))
+                # Check if it's a torch.Tensor (raw score)
+                elif isinstance(score, torch.Tensor):
+                    # Apply softmax and get max probability
+                    probs = F.softmax(score, dim=-1)
+                    max_prob = probs.max().item()
+                    confidences.append(max_prob)
+                else:
+                    # Try to convert to float
+                    try:
+                        confidences.append(float(score))
+                    except (ValueError, TypeError):
+                        self.logger.warning(f"Could not process confidence score: {type(score)}")
+                        continue
+            
+            if not confidences:
+                return {
+                    'avg_confidence': 0.0,
+                    'min_confidence': 0.0,
+                    'max_confidence': 0.0,
+                    'confidence_scores': [],
+                    'confidence_label': 'Unknown'
+                }
             
             avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
             min_conf = min(confidences) if confidences else 0.0

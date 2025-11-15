@@ -17,7 +17,11 @@ class SQLValidator:
         }
     
     def clean_sql(self, sql: str) -> str:
-        """Clean and sanitize SQL query."""
+        """Clean and sanitize SQL query.
+        
+        This method is called after extract_sql_from_response, so it should
+        handle already-extracted SQL, but also be robust for edge cases.
+        """
         if not sql:
             return ""
         
@@ -25,22 +29,65 @@ class SQLValidator:
         sql = re.sub(r'```sql\s*', '', sql)
         sql = re.sub(r'```\s*', '', sql)
         
-        # Find SQL statement
+        # Find SQL statement - look for SQL keywords
+        sql_keywords = r'(SELECT|INSERT|UPDATE|DELETE|WITH|CREATE|DROP|ALTER)'
         sql_match = re.search(
-            r'(SELECT|INSERT|UPDATE|DELETE|WITH|CREATE|DROP|ALTER).*?(?=```|$)', 
-            sql, 
+            sql_keywords + r'.*?',
+            sql,
             re.IGNORECASE | re.DOTALL
         )
         
         if sql_match:
-            sql = sql_match.group(0).strip()
+            start_pos = sql_match.start()
+            sql_text = sql[start_pos:]
+            
+            # Try to find where SQL ends
+            end_patterns = [
+                r';\s*(?:\n|$)',  # Semicolon followed by newline or end
+                r';\s*(?=\n\n)',  # Semicolon followed by double newline
+                r';\s*(?=Explanation|Note|This|The query|The SQL)',  # Semicolon before explanation
+            ]
+            
+            sql_cleaned = sql_text
+            for pattern in end_patterns:
+                match = re.search(pattern, sql_text, re.IGNORECASE)
+                if match:
+                    sql_cleaned = sql_text[:match.end()].strip()
+                    break
+            
+            # If no semicolon found, extract up to first explanation line
+            if not sql_cleaned.strip().endswith(';'):
+                lines = sql_cleaned.split('\n')
+                sql_lines = []
+                explanation_keywords = ['explanation', 'note', 'this query', 'the sql', 'returns', 'finds']
+                
+                for line in lines:
+                    line_lower = line.strip().lower()
+                    if any(keyword in line_lower for keyword in explanation_keywords):
+                        break
+                    if line.strip() and not re.search(r'\b(SELECT|FROM|WHERE|JOIN|GROUP|ORDER|LIMIT|INSERT|UPDATE|DELETE|AND|OR|IN|LIKE|COUNT|SUM|AVG|MAX|MIN)\b', line, re.IGNORECASE):
+                        if len(line.strip()) > 50 and not any(char in line for char in ['(', ')', '=', '<', '>']):
+                            break
+                    sql_lines.append(line)
+                
+                sql_cleaned = '\n'.join(sql_lines).strip()
+            
+            sql = sql_cleaned
+        else:
+            # If no SQL keyword found, return empty
+            return ""
         
         # Clean up trailing whitespace
         sql = re.sub(r'[\s\n]*$', '', sql)
         
-        # Add semicolon if missing
+        # Remove any remaining markdown or formatting
+        sql = re.sub(r'^[`\s]*', '', sql)
+        sql = re.sub(r'[`\s]*$', '', sql)
+        
+        # Add semicolon if missing (only for valid SQL statements)
         if sql and not sql.endswith(';'):
-            sql += ';'
+            if re.search(r'\b(SELECT|INSERT|UPDATE|DELETE)\b', sql, re.IGNORECASE):
+                sql += ';'
         
         return sql
     
