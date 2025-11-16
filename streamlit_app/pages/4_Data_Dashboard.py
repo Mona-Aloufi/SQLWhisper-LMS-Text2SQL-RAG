@@ -6,6 +6,7 @@ import os
 from components.translation import t
 from components.layout import apply_layout
 from graphviz import Digraph
+
 # ============================================================
 # PAGE CONFIGURATION
 # ============================================================
@@ -20,9 +21,20 @@ lang = st.session_state.lang
 # ============================================================
 # LOAD DATABASE (USER OR DEFAULT)
 # ============================================================
-db_path = st.session_state.get("user_database", "data/my_database.sqlite")
+# Support BOTH upload systems: Home Page & Connection Page
+db_path = (
+    st.session_state.get("db_path") or
+    st.session_state.get("user_database")
+)
 
-if not os.path.exists(db_path):
+if db_path:
+    st.session_state.db_path = db_path  # normalize for later pages
+else:
+    st.warning(t("no_database_loaded", lang))
+    st.stop()
+
+
+if not db_path:
     st.warning(t("no_database_loaded", lang))
     st.stop()
 
@@ -37,20 +49,27 @@ def load_tables(db_path):
 
         stats, schema = [], []
         for tname in tables:
+            # Count rows
             try:
                 cur.execute(f'SELECT COUNT(*) FROM "{tname}"')
                 n = cur.fetchone()[0]
             except Exception:
-                n = "?"
-            stats.append({t("table_name", lang): tname, t("rows_count", lang): n})
+                n = 0
 
+            # RAW column names (fixed)
+            stats.append({
+                "table_name": tname,
+                "rows_count": n
+            })
+
+            # Schema extraction
             try:
                 cur.execute(f'PRAGMA table_info("{tname}")')
                 for col in cur.fetchall():
                     schema.append({
-                        t("table_name", lang): tname,
-                        "Column": col[1],
-                        "Type": col[2]
+                        "table_name": tname,
+                        "column": col[1],
+                        "type": col[2]
                     })
             except Exception as e:
                 st.warning(f"Could not read schema for {tname}: {e}")
@@ -81,6 +100,7 @@ def extract_relationships(db_path):
         st.warning(f"Could not extract relationships: {e}")
     return relations
 
+
 df_db_stats, df_schema, tables = load_tables(db_path)
 
 # ============================================================
@@ -90,17 +110,19 @@ st.markdown(f"<h1 class='section-title'>{t('data_dashboard_title', lang)}</h1>",
 st.caption(t("data_dashboard_subtitle", lang))
 
 # ============================================================
-# FILTER SECTION (IN MAIN PAGE)
+# FILTER SECTION
 # ============================================================
 st.markdown("<h3 class='section-subtitle'>" + t("filter_section", lang) + "</h3>", unsafe_allow_html=True)
 
 col1, col2 = st.columns([1.2, 2.5])
+
 with col1:
     selection_mode = st.radio(
         t("table_selection_mode", lang),
         [t("single_table", lang), t("multiple_tables", lang)],
         horizontal=True
     )
+
 with col2:
     if selection_mode == t("single_table", lang):
         selected_tables = [st.selectbox(
@@ -112,154 +134,82 @@ with col2:
         selected_tables = st.multiselect(
             t("choose_multiple_tables", lang),
             tables,
-            default=tables[:3] if len(tables) >= 3 else tables
+            default=tables
         )
 
-# Handle “All Tables”
 if "All Tables" in selected_tables:
     selected_tables = tables
-
-st.divider()
 
 # ============================================================
 # KPI SECTION
 # ============================================================
-total_tables = len(tables)
-selected_count = len(selected_tables)
-filtered_stats = df_db_stats[df_db_stats[t("table_name", lang)].isin(selected_tables)]
+filtered_stats = df_db_stats[df_db_stats["table_name"].isin(selected_tables)]
 
 col1, col2, col3 = st.columns(3)
-col1.metric(t("total_tables", lang), total_tables)
-col2.metric(t("selected_tables", lang), selected_count)
-col3.metric(
-    t("total_rows", lang),
-    int(filtered_stats[t("rows_count", lang)].replace("?", 0).astype(int).sum())
-)
+col1.metric(t("total_tables", lang), len(tables))
+col2.metric(t("selected_tables", lang), len(selected_tables))
+col3.metric(t("total_rows", lang), filtered_stats["rows_count"].sum())
 
 # ============================================================
-# MAIN DASHBOARD TABS
+# MAIN TABS
 # ============================================================
-tab_chart, tab_schema, tab_preview,tab_erd  = st.tabs([
+tab_chart, tab_schema, tab_preview, tab_erd = st.tabs([
     t("rows_chart_title", lang),
     t("schema_explorer", lang),
     t("data_preview", lang),
-    t("erd_diagram",lang),
+    t("erd_diagram", lang)
 ])
 
-# ---------- TAB 1: CHART ----------
+# ------------------- TAB 1: ROW COUNT CHART -------------------
 with tab_chart:
     if not filtered_stats.empty:
         chart = px.bar(
             filtered_stats,
-            x=t("table_name", lang),
-            y=t("rows_count", lang),
-            color=t("table_name", lang),
-            text=t("rows_count", lang),
+            x="table_name",
+            y="rows_count",
+            text="rows_count",
+            color="table_name",
             template="plotly_white"
         )
         chart.update_traces(textposition="outside")
-        chart.update_layout(
-            xaxis_title=t("table_name", lang),
-            yaxis_title=t("rows_count", lang),
-            showlegend=False,
-            margin=dict(t=20, b=40, l=20, r=20)
-        )
+        chart.update_layout(showlegend=False)
         st.plotly_chart(chart, use_container_width=True)
     else:
         st.info(t("no_table_selected", lang))
 
-# ---------- TAB 2: SCHEMA ----------
+# ------------------- TAB 2: SCHEMA -------------------
 with tab_schema:
-    with st.expander(t("show_schema_details", lang), expanded=True):
-        filtered_schema = df_schema[df_schema[t("table_name", lang)].isin(selected_tables)]
-        st.dataframe(filtered_schema, use_container_width=True, height=500)
+    filtered_schema = df_schema[df_schema["table_name"].isin(selected_tables)]
+    st.dataframe(filtered_schema, use_container_width=True, height=500)
 
-# ---------- TAB 3: DATA PREVIEW ----------
+# ------------------- TAB 3: DATA PREVIEW -------------------
 with tab_preview:
-    if selected_tables:
-        preview_tabs = st.tabs(selected_tables)
-        try:
-            with sqlite3.connect(db_path) as conn:
-                for i, tname in enumerate(selected_tables):
-                    with preview_tabs[i]:
-                        try:
-                            safe_tname = tname.replace('"', '""')
-                            df_data = pd.read_sql_query(f'SELECT * FROM "{safe_tname}" LIMIT 50', conn)
-                            if not df_data.empty:
-                                st.dataframe(df_data, width='stretch', height=350)
+    try:
+        with sqlite3.connect(db_path) as conn:
+            preview_tabs = st.tabs(selected_tables)
+            for i, tname in enumerate(selected_tables):
+                with preview_tabs[i]:
+                    safe = tname.replace('"', '""')
+                    df = pd.read_sql_query(f'SELECT * FROM "{safe}" LIMIT 50', conn)
+                    st.dataframe(df, use_container_width=True)
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
 
-                                st.download_button(
-                                    label=f"⬇️ {tname} CSV",
-                                    data=df_data.to_csv(index=False),
-                                    file_name=f"{tname}_data.csv",
-                                    mime="text/csv",
-                                    width='stretch'
-                                )
-                            else:
-                                st.info(f"No data to preview or download for {tname}.")
-                        except Exception as e:
-                            st.warning(f"{t('error_loading_data', lang)}: {e}")
-        except Exception as e:
-            st.error(f"{t('error_loading_data', lang)}: {e}")
-    else:
-        st.info(t("no_table_selected", lang))
-
-# ---------- TAB 4: ERD DIAGRAM ----------
+# ------------------- TAB 4: ERD DIAGRAM -------------------
 with tab_erd:
-    st.markdown(f"### Database Relationships Diagram")
-
     relationships = extract_relationships(db_path)
     dot = Digraph()
 
-    # Create nodes for each table
     for tname in tables:
-        dot.node(tname, tname, shape="box", style="filled", color="#E1BEE7", fillcolor="#F3E5F5")
+        dot.node(tname)
 
-    # Create edges for each foreign key
     for rel in relationships:
-        dot.edge(rel["from_table"], rel["to_table"],
-                 label=f'{rel["from_column"]} → {rel["to_column"]}',
-                 color="#6A1B9A")
+        dot.edge(rel["from_table"], rel["to_table"], label=f'{rel["from_column"]} → {rel["to_column"]}')
 
     if relationships:
         st.graphviz_chart(dot)
     else:
-        st.info("No foreign key relationships detected in this database.")
-
-# ============================================================
-# CUSTOM CSS — POLISH & THEME VARIABLES
-# ============================================================
-st.markdown("""
-<style>
-:root {
-    --purple: #6A1B9A;
-    --light-purple: #F3E5F5;
-    --font: "Segoe UI", "Roboto", sans-serif;
-}
-html, body, [class*="css"] {
-    font-family: var(--font);
-}
-.section-title {
-    font-size: 1.9rem;
-    font-weight: 800;
-    color: var(--purple);
-    margin-bottom: 0.5rem;
-}
-.section-subtitle {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #4A148C;
-}
-div[data-testid="stMetricValue"] {
-    color: var(--purple);
-}
-[data-testid="stMetricLabel"] {
-    color: #666;
-}
-# #MainMenu, footer, header {visibility: hidden;}
-# [data-testid="stSidebar"] {background-color: var(--light-purple);}
-</style>
-""", unsafe_allow_html=True)
+        st.info(t("no_relationships_found", lang))
 
 # ============================================================
 # FOOTER

@@ -7,18 +7,18 @@ from components.translation import t
 from components.layout import apply_layout
 
 # ============================================================
-#  PAGE CONFIGURATION
+# PAGE CONFIGURATION
 # ============================================================
 st.set_page_config(page_title="SQLWhisper | Model Dashboard", layout="wide")
 
 # ============================================================
-#  GLOBAL LAYOUT
+# GLOBAL LAYOUT
 # ============================================================
 render_footer = apply_layout()
 lang = st.session_state.lang
 
 # ============================================================
-#  HEADER
+# PAGE TITLE
 # ============================================================
 st.markdown(f'<div class="section-title">{t("model_dashboard_title", lang)}</div>', unsafe_allow_html=True)
 st.caption(t("model_dashboard_subtitle", lang))
@@ -32,54 +32,82 @@ if not os.path.exists(HISTORY_FILE):
 try:
     df_hist = pd.read_csv(HISTORY_FILE)
 
-    # ---------- Core Metrics ----------
+    if df_hist.empty:
+        st.info(t("no_history_data", lang))
+        st.stop()
+
+    # ============================================================
+    # SAFE COLUMN CREATION (avoid KeyErrors)
+    # ============================================================
+    for col in ["success", "confidence", "timestamp"]:
+        if col not in df_hist.columns:
+            df_hist[col] = None
+
+    # Convert success to numeric safely
+    df_hist["success"] = df_hist["success"].apply(lambda x: 1 if str(x).strip().lower() == "true" else 0)
+
+    # Convert confidence to numeric safely
+    df_hist["confidence"] = pd.to_numeric(df_hist["confidence"], errors="coerce")
+
+    # ============================================================
+    # METRICS
+    # ============================================================
     total_queries = len(df_hist)
-    success_rate = (df_hist["success"].sum() / total_queries * 100) if total_queries else 0
-    avg_conf = (
-        np.mean([r for r in df_hist.get("confidence", []) if pd.notnull(r)])
-        if "confidence" in df_hist.columns
-        else None
-    )
+    success_rate = (df_hist["success"].mean() * 100) if total_queries > 0 else 0
+
+    valid_conf = df_hist["confidence"].dropna()
+    avg_conf = valid_conf.mean() if not valid_conf.empty else None
 
     c1, c2, c3 = st.columns(3)
     c1.metric(t("total_queries_label", lang), total_queries)
     c2.metric(t("success_rate", lang), f"{success_rate:.1f}%")
-    c3.metric(t("avg_confidence", lang), f"{avg_conf:.1f}%" if avg_conf else "N/A")
+    c3.metric(
+        t("avg_confidence", lang),
+        f"{avg_conf:.1f}%" if avg_conf is not None else "N/A"
+    )
 
-    # ---------- Trends ----------
+    # ============================================================
+    # TIMESTAMP HANDLING
+    # ============================================================
     df_hist["timestamp"] = pd.to_datetime(df_hist["timestamp"], errors="coerce")
     df_hist = df_hist.sort_values("timestamp")
 
-    if len(df_hist) > 1:
-        # Success trend
-        fig_q = px.line(
+    if df_hist["timestamp"].notna().sum() < 2:
+        st.info(t("no_query_yet_run", lang))
+        render_footer()
+        st.stop()
+
+    # ============================================================
+    # SUCCESS TREND
+    # ============================================================
+    fig_q = px.line(
+        df_hist,
+        x="timestamp",
+        y="success",
+        markers=True,
+        title=t("query_trend", lang),
+        template="plotly_white"
+    )
+    fig_q.update_yaxes(title=t("execution_success_label", lang))
+    st.plotly_chart(fig_q, use_container_width=True)
+
+    # ============================================================
+    # CONFIDENCE TREND
+    # ============================================================
+    if "confidence" in df_hist.columns and df_hist["confidence"].notna().any():
+        fig_conf = px.line(
             df_hist,
             x="timestamp",
-            y="success",
+            y="confidence",
             markers=True,
-            title=t("query_trend", lang),
+            line_shape="spline",
+            title=t("confidence_trend", lang),
             template="plotly_white"
         )
-        fig_q.update_yaxes(title=t("execution_success_label", lang))
-        st.plotly_chart(fig_q, use_container_width=True)
-
-        # Confidence trend
-        if "confidence" in df_hist.columns and df_hist["confidence"].notna().any():
-            fig_conf = px.line(
-                df_hist,
-                x="timestamp",
-                y="confidence",
-                title=t("confidence_trend", lang),
-                template="plotly_white",
-                markers=True,
-                line_shape="spline"
-            )
-            fig_conf.update_yaxes(range=[0, 100])
-            st.plotly_chart(fig_conf, use_container_width=True)
-        else:
-            st.info(t("confidence_unavailable", lang))
+        fig_conf.update_yaxes(range=[0, 100])
+        st.plotly_chart(fig_conf, use_container_width=True)
     else:
-        st.info(t("no_query_yet_run", lang))
+        st.info(t("confidence_unavailable", lang))
 
 except Exception as e:
     st.error(f"{t('error_loading_dashboard', lang)}: {e}")

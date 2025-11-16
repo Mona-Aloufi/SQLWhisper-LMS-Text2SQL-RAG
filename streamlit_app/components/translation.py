@@ -22,6 +22,30 @@ text_labels = {
         "default_info": "Using the default demo schema.<br>Navigate to the <strong>Query</strong> page to explore and generate SQL!",
          
         # ============================================================
+        #  Database Connection Page (EN)
+        # ============================================================
+        "database_connection_title": "Database Connection",
+        "upload_sqlite_tab": "Upload SQLite",
+        "external_db_tab": "External Database",
+        "upload_sqlite_title": "Upload SQLite Database File",
+        "choose_sqlite_file": "Choose a SQLite file",
+        "upload_connect_btn": "Upload & Connect",
+        "processing": "Processing...",
+        "upload_failed": "Upload failed",
+        "db_connected_success": "Database connected successfully!",
+        "redirecting_dashboard": "Opening Data Dashboard...",
+        "connect_external_title": "Connect to External Database",
+        "db_type_label": "Database Type",
+        "host_label": "Host",
+        "dbname_label": "Database Name",
+        "port_label": "Port",
+        "username_label": "Username",
+        "password_label": "Password",
+        "connect_btn": "Connect",
+        "connecting": "Connecting...",
+        "connection_failed": "Connection failed",
+        "database_connection_title": "Database Connection",
+        # ============================================================
         # 🗄️ Data Dashboard translations
         # ============================================================
         "data_dashboard_title": "Data Dashboard",
@@ -274,6 +298,33 @@ text_labels = {
         "upload_success": "تم رفع {file} بنجاح!",
         "upload_info": "انتقل إلى صفحة <strong>الاستعلام</strong> لبدء طرح الأسئلة.",
         "default_info": "يتم استخدام النسخة التجريبية الافتراضية.<br>انتقل إلى صفحة <strong>الاستعلام</strong> للاستكشاف وإنشاء الاستعلامات.",
+        # ============================================================
+        # 🔌 Database Connection Page (AR)
+        # ============================================================
+        "database_connection_title": "اتصال قاعدة البيانات",
+        "upload_sqlite_tab": "رفع SQLite",
+        "external_db_tab": "قاعدة بيانات خارجية",
+        "upload_sqlite_title": "رفع ملف قاعدة بيانات SQLite",
+        "choose_sqlite_file": "اختر ملف SQLite",
+        "upload_connect_btn": "رفع والاتصال",
+        "processing": "جارٍ المعالجة...",
+        "upload_failed": "فشل الرفع",
+        "db_connected_success": "تم الاتصال بقاعدة البيانات بنجاح!",
+        "redirecting_dashboard": "جاري فتح لوحة البيانات...",
+        "connect_external_title": "الاتصال بقاعدة بيانات خارجية",
+        "db_type_label": "نوع قاعدة البيانات",
+        "host_label": "المضيف",
+        "dbname_label": "اسم قاعدة البيانات",
+        "port_label": "المنفذ",
+        "username_label": "اسم المستخدم",
+        "password_label": "كلمة المرور",
+        "connect_btn": "اتصال",
+        "connecting": "جارٍ الاتصال...",
+        "connection_failed": "فشل الاتصال",
+        "database_connection_title": "اتصال قاعدة البيانات",
+
+
+
         # ============================================================
         # 🗄️ Data Dashboard translations
         # ============================================================

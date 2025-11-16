@@ -8,7 +8,7 @@ def render_sidebar(lang, get_database_info):
     """
 
     # ============================================================
-    # 🟣 APP LOGO & NAME
+    # APP LOGO & NAME
     # ============================================================
     logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", "logo.png")
 
@@ -63,16 +63,17 @@ def render_sidebar(lang, get_database_info):
     st.sidebar.markdown("---")
 
     # ============================================================
-    # 📂 NAVIGATION LINKS
+    # NAVIGATION LINKS
     # ============================================================
     st.sidebar.page_link("streamlitapp.py", label=t("app_title", lang))
+    st.sidebar.page_link("pages/0_connection_DataBase.py", label="Data Connection")
     st.sidebar.page_link("pages/1_Query.py", label=t("query_tab", lang))
     st.sidebar.page_link("pages/2_History.py", label=t("history_tab", lang))
     st.sidebar.page_link("pages/3_Feedback_Review.py", label=t("feedback_tab", lang))
     st.sidebar.page_link("pages/4_Data_Dashboard.py", label=t("data_dashboard_title", lang))
     st.sidebar.page_link("pages/5_Model_Dashboard.py", label=t("model_dashboard_title", lang))
     st.sidebar.page_link("pages/6_About.py", label=t("about_tab", lang))
-    st.sidebar.page_link("pages/7_Chatbot.py", label=t("chatbot_title", lang))
+    #st.sidebar.page_link("pages/7_Chatbot.py", label=t("chatbot_title", lang))
     st.sidebar.markdown("---")
 
     # # ============================================================
