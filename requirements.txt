@@ -1,25 +1,22 @@
-# Database Connectivity
-sqlite3>=0.1.0
+# Database Drivers
 psycopg2-binary>=2.9.7
 PyMySQL>=1.1.0
 
 # Data Handling & Utilities
 pandas>=2.2.0
 pyyaml>=6.0
+python-dotenv
 
-# Testing & Development
-pytest>=7.4.0
-
-# For Text2SQL model integration
-torch>=2.3.0
-transformers>=4.38.0
-sentencepiece>=0.1.99
+# API & Web
 fastapi
 uvicorn
-transformers
-torch
-psycopg2-binary
-pymysql
-python-dotenv
-multipart
+python-multipart
 streamlit>=1.30.0
+
+# ML / NLP
+torch==2.3.0+cpu
+transformers>=4.38.0
+sentencepiece>=0.1.99
+
+# Testing
+pytest>=7.4.0
