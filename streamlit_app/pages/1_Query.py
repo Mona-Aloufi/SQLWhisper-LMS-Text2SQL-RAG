@@ -51,6 +51,7 @@ def check_api_health():
         return False
 
 
+
 def log_question(question, sql_query, success, valid_sql=False,
                  rows_returned=0, error_message=None,
                  confidence=None, confidence_label=None):
@@ -72,6 +73,17 @@ def log_question(question, sql_query, success, valid_sql=False,
         "confidence_label": confidence_label,
     }
 
+    os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
+
+    df = pd.read_csv(HISTORY_FILE) if os.path.exists(HISTORY_FILE) else pd.DataFrame(columns=expected_cols)
+
+    for col in expected_cols:
+        if col not in df.columns:
+            df[col] = None
+
+    df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+    df.to_csv(HISTORY_FILE, index=False)
+    
     df = pd.read_csv(HISTORY_FILE) if os.path.exists(HISTORY_FILE) else pd.DataFrame(columns=expected_cols)
 
     for col in expected_cols:
