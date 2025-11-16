@@ -83,15 +83,6 @@ def log_question(question, sql_query, success, valid_sql=False,
 
     df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
     df.to_csv(HISTORY_FILE, index=False)
-    
-    df = pd.read_csv(HISTORY_FILE) if os.path.exists(HISTORY_FILE) else pd.DataFrame(columns=expected_cols)
-
-    for col in expected_cols:
-        if col not in df.columns:
-            df[col] = None
-
-    df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
-    df.to_csv(HISTORY_FILE, index=False)
 
 # ============================================================
 # MAIN CONTENT
@@ -283,22 +274,51 @@ if st.session_state.generated_sql and st.session_state.last_result:
         if st.button(t("generate_summary", lang), key="btn_generate_summary", use_container_width=True):
             with st.spinner("Generating natural-language summary..."):
                 try:
+                    # Convert rows (tuples) to list of dictionaries for summary API
+                    results_dict = []
+                    for row in rows:
+                        if isinstance(row, (list, tuple)):
+                            # Row is a tuple/list, convert to dict
+                            row_dict = {}
+                            for i, col in enumerate(columns):
+                                row_dict[col] = row[i] if i < len(row) else None
+                            results_dict.append(row_dict)
+                        elif isinstance(row, dict):
+                            # Row is already a dict
+                            results_dict.append(row)
+                        else:
+                            # Fallback: try to convert
+                            results_dict.append({"value": str(row)})
+                    
                     summary_payload = {
                         "question": user_question,
                         "sql_query": result["sql"],
-                        "results": rows
+                        "results": results_dict
                     }
                     s_res = requests.post(f"{API_BASE_URL}/generate-summary", json=summary_payload)
 
                     if s_res.status_code == 200:
-                        summary = s_res.json().get("summary", "")
-                        st.markdown(
-                            f'<div class="summary-box"><h4>{t("summary_box_title", lang)}</h4>'
-                            f'<p>{summary}</p></div>',
-                            unsafe_allow_html=True
-                        )
+                        summary_data = s_res.json()
+                        summary = summary_data.get("summary", "")
+                        
+                        if summary:
+                            st.markdown(
+                                f'<div class="summary-box"><h4>{t("summary_box_title", lang)}</h4>'
+                                f'<p>{summary}</p></div>',
+                                unsafe_allow_html=True
+                            )
+                            # Show summary metadata if available
+                            if summary_data.get("confidence"):
+                                st.caption(f"Confidence: {summary_data.get('confidence', 0):.1%}")
+                        else:
+                            error_msg = summary_data.get("error", "Unknown error")
+                            st.warning(f"Summary generation returned empty result. Error: {error_msg}")
+                            # Show fallback info
+                            if summary_data.get("summary_type") == "fallback":
+                                st.info(f"Using fallback summary: Found {summary_data.get('row_count', 0)} results.")
                     else:
-                        st.warning("Could not generate summary.")
+                        error_detail = s_res.text if hasattr(s_res, 'text') else "Unknown error"
+                        st.error(f"Could not generate summary (Status {s_res.status_code}): {error_detail}")
 
                 except Exception as e:
                     st.error(f"Summary Error: {e}")

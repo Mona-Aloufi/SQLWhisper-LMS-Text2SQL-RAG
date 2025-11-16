@@ -1,7 +1,7 @@
 # Database Connectivity
 psycopg2-binary>=2.9.7
 PyMySQL>=1.1.0
-sqlite3
+# Note: sqlite3 is a built-in Python module, no need to install
 
 # Data Handling & Utilities
 pandas>=2.2.0

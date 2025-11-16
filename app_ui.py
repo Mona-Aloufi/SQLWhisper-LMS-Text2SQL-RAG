@@ -156,7 +156,7 @@ if page == "Dashboard":
         
         if not st.session_state.db_connected:
             if st.button("Connect Database Now", use_container_width=True):
-                st.switch_page
+                st.info("Please go to the 'Database Setup' page to connect a database.")
     
     with col2:
         st.markdown("### Recent Activity")

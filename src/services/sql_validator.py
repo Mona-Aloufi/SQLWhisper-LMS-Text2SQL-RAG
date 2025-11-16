@@ -3,8 +3,8 @@ import logging
 from typing import Dict, Any
 
 class SQLValidator:
-    def _init_(self):
-        self.logger = logging.getLogger(_name_)
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
 
     # ---------------------------------------------------------
     # 1. CLEAN SQL

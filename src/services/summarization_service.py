@@ -54,6 +54,7 @@ class ResultSummarizationService:
         Returns:
             Dict with summary, success status, and metadata
         """
+        # Validate and normalize results format
         if not results:
             return {
                 "summary": "No data was found matching your criteria.",
@@ -61,6 +62,29 @@ class ResultSummarizationService:
                 "row_count": 0,
                 "summary_type": "empty_result"
             }
+        
+        # Ensure results are dictionaries
+        normalized_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, dict):
+                normalized_results.append(result)
+            elif isinstance(result, (list, tuple)):
+                # Convert tuple/list to dict (shouldn't happen but handle it)
+                self.logger.warning(f"Result {i} is not a dict, converting from tuple/list")
+                normalized_results.append({f"col_{j}": val for j, val in enumerate(result)})
+            else:
+                self.logger.warning(f"Result {i} has unexpected type {type(result)}, skipping")
+        
+        if not normalized_results:
+            return {
+                "summary": "No valid data was found to summarize.",
+                "success": False,
+                "row_count": 0,
+                "summary_type": "invalid_format"
+            }
+        
+        results = normalized_results
+        self.logger.info(f"Generating summary for {len(results)} results, question: {question[:50]}...")
         
         try:
             # Format data for LLM
@@ -80,14 +104,28 @@ class ResultSummarizationService:
                 return self._generate_fallback_summary(results, question)
             
             # Extract and clean the summary
-            raw_summary = generation_result['generated_text']
+            raw_summary = generation_result.get('generated_text', '').strip()
+            
+            # Log raw output for debugging
+            self.logger.info(f"Raw summary output (length: {len(raw_summary)}): {raw_summary[:200]}...")
+            
+            if not raw_summary:
+                self.logger.warning("Model returned empty summary, using fallback")
+                return self._generate_fallback_summary(results, question)
+            
             summary = self._extract_summary_from_response(raw_summary)
             
-            # If extraction failed, use the raw output
+            # If extraction failed or summary is too short, use the raw output
             if not summary or len(summary.strip()) < 10:
+                self.logger.info("Extraction returned short/empty summary, using raw output")
                 summary = raw_summary.strip()
                 # Try to clean it
                 summary = self._clean_summary(summary)
+                
+                # If still empty after cleaning, use fallback
+                if not summary or len(summary.strip()) < 10:
+                    self.logger.warning("Cleaned summary still empty, using fallback")
+                    return self._generate_fallback_summary(results, question)
             
             return {
                 "summary": summary,

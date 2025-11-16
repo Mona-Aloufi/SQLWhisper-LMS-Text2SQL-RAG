@@ -3,7 +3,6 @@ import requests
 from components.translation import t, text_labels
 from components.layout import apply_layout
 from components.footer import render_footer
-import streamlit as st
 
 # ============================================================
 # GLOBAL LAYOUT
