@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import os
 from components.translation import t, text_labels
 from components.layout import apply_layout
 from components.footer import render_footer
@@ -10,7 +11,7 @@ from components.footer import render_footer
 render_footer = apply_layout()
 lang = st.session_state.get("lang", "en")
 
-API_BASE_URL = "http://127.0.0.1:8000"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
 
 # ============================================================
 # SAFE INITIALIZATION OF SESSION STATE KEYS

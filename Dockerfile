@@ -4,7 +4,7 @@
 # ============================================================
 # Stage 1: Base image with Python and system dependencies
 # ============================================================
-FROM python:3.10-slim AS BASE
+FROM python:3.10-slim AS base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ============================================================
 # Stage 2: Dependencies installation
 # ============================================================
-FROM BASE AS DEPENDENCIES
+FROM base AS dependencies
 
 WORKDIR /app
 
@@ -37,7 +37,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ============================================================
 # Stage 3: Final application image
 # ============================================================
-FROM DEPENDENCIES AS APP
+FROM dependencies AS app
 
 WORKDIR /app
 
@@ -59,10 +59,10 @@ EXPOSE 8000 8501
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Copy entrypoint script
+# ============================================================
+# Entry point
+# ============================================================
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Default command: Start FastAPI backend
-# Override in docker-compose.yml or when running container
-CMD ["docker-entrypoint.sh", "python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["docker-entrypoint.sh"]

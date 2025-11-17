@@ -16,7 +16,8 @@ lang = st.session_state.lang
 # ============================================================
 # CONSTANTS
 # ============================================================
-API_BASE_URL = "http://127.0.0.1:8000"
+import os
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
 HISTORY_FILE = "streamlit_app/history.csv"
 
 # ============================================================

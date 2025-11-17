@@ -17,7 +17,7 @@ services:
       - ./data:/app/data
       - ./streamlit_app/history.csv:/app/streamlit_app/history.csv
       - model_cache:/root/.cache/huggingface
-    command: python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+    command: /usr/local/bin/docker-entrypoint.sh python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
@@ -40,7 +40,7 @@ services:
       - ./streamlit_app:/app/streamlit_app
       - ./data:/app/data
       - ./streamlit_app/history.csv:/app/streamlit_app/history.csv
-    command: streamlit run streamlit_app/streamlitapp.py --server.port 8501 --server.address 0.0.0.0 --server.headless true
+    command: /usr/local/bin/docker-entrypoint.sh streamlit run streamlit_app/streamlitapp.py --server.port 8501 --server.address 0.0.0.0 --server.headless true
     depends_on:
       backend:
         condition: service_healthy
